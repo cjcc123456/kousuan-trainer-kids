@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 680 300" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>v1.1 界面设计：历史成绩页的家长视角与孩子视角</title>
+  <desc>家长视角有查看对象选择器、逐条删除和清空按钮；孩子视角只读，无删除入口</desc>
+  <rect x="15.5" y="0.5" width="319" height="249" rx="10" fill="#FFFFFF" stroke="#B4B2A9"/>
+  <path d="M25,1 H325 A9,9 0 0 1 334,10 V30 H16 V10 A9,9 0 0 1 25,1 Z" fill="#F1EFE8"/>
+  <text x="175" y="20" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">历史成绩（家长视角）</text>
+  <path d="M322,12 L328,18 M328,12 L322,18" stroke="#888780" stroke-width="1.2"/>
+  <text x="27" y="48" font-size="11" font-weight="500" fill="#444441" font-family="sans-serif">共 12 次 · 平均正确率 86%</text>
+  <rect x="242" y="36" width="80" height="22" rx="6" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="282" y="51" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">王二 ▾</text>
+  <text x="27" y="74" font-size="11" fill="#888780" font-family="sans-serif">时间</text>
+  <text x="100" y="74" font-size="11" fill="#888780" font-family="sans-serif">模式</text>
+  <text x="140" y="74" font-size="11" fill="#888780" font-family="sans-serif">成绩</text>
+  <text x="185" y="74" font-size="11" fill="#888780" font-family="sans-serif">用时</text>
+  <text x="303" y="74" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">删除</text>
+  <line x1="25" y1="81" x2="325" y2="81" stroke="#F1EFE8" stroke-width="1.5"/>
+  <rect x="25" y="85" width="300" height="22" fill="#F1EFE8"/>
+  <text x="27" y="101" font-size="11" fill="#444441" font-family="sans-serif">09-24 20:15</text>
+  <text x="100" y="101" font-size="11" fill="#378ADD" font-family="sans-serif">练习</text>
+  <text x="140" y="101" font-size="11" fill="#444441" font-family="sans-serif">18/20</text>
+  <text x="185" y="101" font-size="11" fill="#444441" font-family="sans-serif">6分23秒</text>
+  <rect x="288" y="87" width="30" height="18" rx="4" fill="#FFFFFF" stroke="#A32D2D"/>
+  <text x="303" y="100" text-anchor="middle" font-size="11" fill="#A32D2D" font-family="sans-serif">删</text>
+  <text x="27" y="127" font-size="11" fill="#444441" font-family="sans-serif">09-24 19:40</text>
+  <text x="100" y="127" font-size="11" fill="#854F0B" font-family="sans-serif">测验</text>
+  <text x="140" y="127" font-size="11" fill="#444441" font-family="sans-serif">76/100</text>
+  <text x="185" y="127" font-size="11" fill="#444441" font-family="sans-serif">18分40秒</text>
+  <rect x="288" y="113" width="30" height="18" rx="4" fill="#FFFFFF" stroke="#A32D2D"/>
+  <text x="303" y="126" text-anchor="middle" font-size="11" fill="#A32D2D" font-family="sans-serif">删</text>
+  <rect x="25" y="137" width="300" height="22" fill="#F1EFE8"/>
+  <text x="27" y="153" font-size="11" fill="#444441" font-family="sans-serif">09-23 20:02</text>
+  <text x="100" y="153" font-size="11" fill="#378ADD" font-family="sans-serif">练习</text>
+  <text x="140" y="153" font-size="11" fill="#3B6D11" font-family="sans-serif">20/20</text>
+  <text x="185" y="153" font-size="11" fill="#444441" font-family="sans-serif">5分02秒</text>
+  <rect x="288" y="139" width="30" height="18" rx="4" fill="#FFFFFF" stroke="#A32D2D"/>
+  <text x="303" y="152" text-anchor="middle" font-size="11" fill="#A32D2D" font-family="sans-serif">删</text>
+  <rect x="27" y="185" width="90" height="28" rx="8" fill="#FFFFFF" stroke="#A32D2D"/>
+  <text x="72" y="203" text-anchor="middle" font-size="11" fill="#A32D2D" font-family="sans-serif">清空记录</text>
+  <rect x="233" y="185" width="90" height="28" rx="8" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="278" y="203" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">返回菜单</text>
+  <text x="175" y="232" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">删除后 txt 文件同步更新</text>
+  <rect x="345.5" y="0.5" width="319" height="249" rx="10" fill="#FFFFFF" stroke="#B4B2A9"/>
+  <path d="M355,1 H655 A9,9 0 0 1 664,10 V30 H346 V10 A9,9 0 0 1 355,1 Z" fill="#F1EFE8"/>
+  <text x="505" y="20" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">历史成绩（孩子视角）</text>
+  <path d="M652,12 L658,18 M658,12 L652,18" stroke="#888780" stroke-width="1.2"/>
+  <text x="357" y="48" font-size="11" font-weight="500" fill="#444441" font-family="sans-serif">共 12 次 · 平均正确率 86%</text>
+  <text x="653" y="48" text-anchor="end" font-size="11" fill="#888780" font-family="sans-serif">王二（学生）</text>
+  <text x="357" y="74" font-size="11" fill="#888780" font-family="sans-serif">时间</text>
+  <text x="430" y="74" font-size="11" fill="#888780" font-family="sans-serif">模式</text>
+  <text x="470" y="74" font-size="11" fill="#888780" font-family="sans-serif">成绩</text>
+  <text x="515" y="74" font-size="11" fill="#888780" font-family="sans-serif">用时</text>
+  <line x1="355" y1="81" x2="655" y2="81" stroke="#F1EFE8" stroke-width="1.5"/>
+  <rect x="355" y="85" width="300" height="22" fill="#F1EFE8"/>
+  <text x="357" y="101" font-size="11" fill="#444441" font-family="sans-serif">09-24 20:15</text>
+  <text x="430" y="101" font-size="11" fill="#378ADD" font-family="sans-serif">练习</text>
+  <text x="470" y="101" font-size="11" fill="#444441" font-family="sans-serif">18/20</text>
+  <text x="515" y="101" font-size="11" fill="#444441" font-family="sans-serif">6分23秒</text>
+  <text x="357" y="127" font-size="11" fill="#444441" font-family="sans-serif">09-24 19:40</text>
+  <text x="430" y="127" font-size="11" fill="#854F0B" font-family="sans-serif">测验</text>
+  <text x="470" y="127" font-size="11" fill="#444441" font-family="sans-serif">76/100</text>
+  <text x="515" y="127" font-size="11" fill="#444441" font-family="sans-serif">18分40秒</text>
+  <rect x="355" y="137" width="300" height="22" fill="#F1EFE8"/>
+  <text x="357" y="153" font-size="11" fill="#444441" font-family="sans-serif">09-23 20:02</text>
+  <text x="430" y="153" font-size="11" fill="#378ADD" font-family="sans-serif">练习</text>
+  <text x="470" y="153" font-size="11" fill="#3B6D11" font-family="sans-serif">20/20</text>
+  <text x="515" y="153" font-size="11" fill="#444441" font-family="sans-serif">5分02秒</text>
+  <text x="505" y="196" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">学生不能删除历史记录</text>
+  <rect x="460" y="212" width="90" height="28" rx="8" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="505" y="230" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">返回菜单</text>
+  <text x="175" y="278" text-anchor="middle" font-size="13" fill="#B4B2A9" font-family="sans-serif">④ 历史成绩-家长（可删）</text>
+  <text x="505" y="278" text-anchor="middle" font-size="13" fill="#B4B2A9" font-family="sans-serif">⑤ 历史成绩-孩子（只读）</text>
+</svg>

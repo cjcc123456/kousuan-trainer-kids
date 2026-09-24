@@ -1,20 +1,26 @@
 # -*- coding: utf-8 -*-
 """
-口算小达人 —— 小学二年级 100 以内加减法随机出题器
+口算小达人 v1.1 —— 小学二年级 100 以内加减法随机出题器（家庭多用户版）
 
 运行方式：
     python 口算小达人.py               正常启动程序
-    python 口算小达人.py --selftest    自检（出题引擎1万题校验 + 交互逻辑测试）
+    python 口算小达人.py --selftest    自检（出题引擎1万题校验 + 交互逻辑 + 用户体系测试）
 
-规格依据：《制作计划书.md》（规格全部锁定版）
+规格依据：《制作计划书.md》（v1.0 规格 + 第九章 v1.1 用户与权限升级，均已锁定）
+
+数据文件（均位于程序同目录，txt 记事本可直接查看）：
+    口算小达人-用户.json            用户列表、角色、密码哈希、当前用户
+    口算小达人-历史成绩-<姓名>.txt   每位用户一份历史记录
 """
 
+import hashlib
+import json
 import os
+import random
 import re
 import sys
-import random
-import time
 import tempfile
+import time
 import tkinter as tk
 from tkinter import messagebox
 
@@ -24,7 +30,6 @@ from tkinter import messagebox
 APP_TITLE = "口算小达人"
 WINDOW_W, WINDOW_H = 900, 600
 
-# 配色（取自设计草图）
 PAGE_BG = "#FFFFFF"
 CARD_BG = "#F1EFE8"
 WHITE = "#FFFFFF"
@@ -47,10 +52,19 @@ FONT = "Microsoft YaHei UI"
 MODE_PRACTICE, MODE_TEST, MODE_REVIEW = "practice", "test", "review"
 MODE_NAME = {MODE_PRACTICE: "练习模式", MODE_TEST: "测验模式", MODE_REVIEW: "错题重练"}
 MODE_COUNT = {MODE_PRACTICE: 20, MODE_TEST: 100}
-TEST_TIME_LIMIT = 20 * 60  # 测验模式限时 20 分钟
-ONE_DIGIT_RATIO = 0.2      # 两位数±一位数占 20%，其余为两位数±两位数
-HISTORY_FILE = "口算小达人-历史成绩.txt"
-HISTORY_DISPLAY_MAX = 50   # 软件内最多显示最近 50 次
+TEST_TIME_LIMIT = 20 * 60
+ONE_DIGIT_RATIO = 0.2
+HISTORY_DISPLAY_MAX = 50
+
+ROLE_PARENT, ROLE_CHILD = "parent", "child"
+ROLE_NAME = {ROLE_PARENT: "家长", ROLE_CHILD: "学生"}
+ROLE_COLOR = {ROLE_PARENT: "#854F0B", ROLE_CHILD: "#185FA5"}
+
+USER_FILE = "口算小达人-用户.json"
+LEGACY_HISTORY = "口算小达人-历史成绩.txt"
+HISTORY_PREFIX = "口算小达人-历史成绩-"
+HISTORY_HEADER = ("口算小达人 历史成绩记录（每次答题一行）\n"
+                  "时间 | 模式 | 成绩 | 正确率 | 用时\n")
 
 
 # ---------------------------------------------------------------------------
@@ -64,58 +78,50 @@ class Question:
     def __init__(self, a, b, op):
         self.a, self.b, self.op = a, b, op
         self.answer = a + b if op == "+" else a - b
-        self.two_digit = b >= 10  # 加数/减数是否为两位数
-        self.index_no = 0         # 在本轮中的题号（组卷时赋值）
+        self.two_digit = b >= 10
+        self.index_no = 0
 
     @property
     def text(self):
         return "%d %s %d" % (self.a, self.op, self.b)
 
     def key(self):
-        """查重键：加法交换律视为同一题"""
         if self.op == "+":
             x, y = (self.a, self.b) if self.a <= self.b else (self.b, self.a)
             return ("+", x, y)
         return ("-", self.a, self.b)
 
     def has_carry(self):
-        """是否含进位（加法）或退位（减法）"""
         if self.op == "+":
             return (self.a % 10) + (self.b % 10) >= 10
         return (self.a % 10) < (self.b % 10)
 
 
 def _random_question(two_digit):
-    """随机生成一道满足全部数值约束的题"""
     op = "+" if random.random() < 0.5 else "-"
     if two_digit:
         if op == "+":
-            a = random.randint(10, 89)          # 保证 100-a >= 11
-            b = random.randint(10, 100 - a)     # 和 <= 100
+            a = random.randint(10, 89)
+            b = random.randint(10, 100 - a)
         else:
             a = random.randint(20, 99)
-            b = random.randint(10, a)           # 差 >= 0
+            b = random.randint(10, a)
     else:
         a = random.randint(10, 99)
         if op == "+":
-            b = random.randint(1, min(9, 100 - a))   # 和 <= 100
+            b = random.randint(1, min(9, 100 - a))
         else:
-            b = random.randint(1, 9)                 # a>=10 恒有差>=0
+            b = random.randint(1, 9)
     return Question(a, b, op)
 
 
 def generate_round(n):
-    """
-    生成一轮 n 道题：
-      - 两位数±一位数 20%，两位数±两位数 80%，顺序打乱
-      - 同一轮内不重复（加法交换律视为同一题）
-      - 保证既出现进退位题，也出现不进位题
-    """
+    """生成一轮 n 道题：配比 20:80、去重（加法交换同题）、保证进退位混合"""
     one_count = int(round(n * ONE_DIGIT_RATIO))
     flags = [True] * (n - one_count) + [False] * one_count
 
     questions = None
-    for _ in range(100):  # 极小概率需要整体重生成
+    for _ in range(100):
         random.shuffle(flags)
         used, qs, ok = set(), [], True
         for two_digit in flags:
@@ -132,7 +138,7 @@ def generate_round(n):
             continue
         questions = qs
         carry = sum(1 for q in qs if q.has_carry())
-        if 0 < carry < n:      # 进退位混合
+        if 0 < carry < n:
             return qs
     return questions if questions else []
 
@@ -141,19 +147,18 @@ def generate_round(n):
 # 二、工具函数
 # ---------------------------------------------------------------------------
 def fmt_clock(sec):
-    """秒 -> mm:ss"""
     sec = max(0, int(sec))
     return "%02d:%02d" % (sec // 60, sec % 60)
 
 
 def fmt_duration(sec):
-    """秒 -> X分Y秒"""
     sec = max(0, int(sec))
-    return "%d分%02d秒" % (sec // 60, sec % 60) if sec % 60 < 10 else "%d分%d秒" % (sec // 60, sec % 60)
+    if sec % 60 < 10:
+        return "%d分%02d秒" % (sec // 60, sec % 60)
+    return "%d分%d秒" % (sec // 60, sec % 60)
 
 
 def compute_stars(acc):
-    """星星与正确率挂钩：>=90% 三颗、70-89% 两颗、<70% 一颗"""
     if acc >= 0.9:
         return 3
     if acc >= 0.7:
@@ -170,29 +175,62 @@ def encouragement(acc):
 
 
 def app_dir():
-    """程序所在目录（打包后为 exe 同目录）"""
     if getattr(sys, "frozen", False):
         return os.path.dirname(sys.executable)
     return os.path.dirname(os.path.abspath(__file__))
 
 
+def resolve_base_dir():
+    """数据文件目录：优先程序同目录，不可写则退到用户主目录"""
+    for d in (app_dir(), os.path.expanduser("~")):
+        try:
+            probe = os.path.join(d, ".口算小达人-写入测试")
+            with open(probe, "w", encoding="utf-8"):
+                pass
+            os.remove(probe)
+            return d
+        except Exception:
+            continue
+    return os.path.expanduser("~")
+
+
+def safe_filename(name):
+    """用户名转安全文件名"""
+    return re.sub(r'[\\/:*?"<>|]', "_", name).strip() or "用户"
+
+
+def make_pin_hash(pin, salt=None):
+    salt = salt or os.urandom(8).hex()
+    return salt, hashlib.sha256((salt + pin).encode("utf-8")).hexdigest()
+
+
 def round_rect(canvas, x1, y1, x2, y2, r, **kw):
-    """在 Canvas 上画圆角矩形"""
     pts = [x1 + r, y1, x2 - r, y1, x2, y1, x2, y1 + r, x2, y2 - r, x2, y2,
            x2 - r, y2, x1 + r, y2, x1, y2, x1, y2 - r, x1, y1 + r, x1, y1]
     return canvas.create_polygon(pts, smooth=True, **kw)
 
 
 def shade(hex_color, factor=0.9):
-    """颜色加深（用于悬停效果）"""
     hex_color = hex_color.lstrip("#")
     r, g, b = (int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
     return "#%02X%02X%02X" % (int(r * factor), int(g * factor), int(b * factor))
 
 
+def person_icon(parent, x, y, r, color, bg):
+    """小人图标（头 + 肩），返回 Canvas"""
+    cv = tk.Canvas(parent, width=r * 4, height=r * 4, bg=bg, highlightthickness=0)
+    cx, cy = r * 2, r * 1.5
+    cv.create_oval(cx - r * 0.72, cy - r * 1.5, cx + r * 0.72, cy - r * 0.06,
+                   fill=color, outline="")
+    cv.create_arc(cx - r * 1.7, cy + r * 0.1, cx + r * 1.7, cy + r * 3.5,
+                  start=0, extent=180, fill=color, outline="", style="chord")
+    return cv
+
+
 def make_button(parent, title, subtitle, bg, fg, sub_fg, command,
-                width, height, title_font=18, sub_font=12, border=None):
-    """自绘大按钮（Frame + Label，两行文字），返回 Frame（由调用方 pack）"""
+                width, height, title_font=18, sub_font=12, border=None,
+                enabled=True):
+    """自绘按钮（Frame + Label），返回 Frame（由调用方 pack）"""
     frame = tk.Frame(parent, bg=bg, width=width, height=height,
                      highlightthickness=(1 if border else 0),
                      highlightbackground=border or bg,
@@ -219,48 +257,470 @@ def make_button(parent, title, subtitle, bg, fg, sub_fg, command,
             w.config(bg=bg)
 
     for w in widgets:
-        w.bind("<Button-1>", lambda e, c=command: c() if c else None)
-        try:
-            w.config(cursor="hand2")
-        except tk.TclError:
-            pass
-        if bg != WHITE:
-            w.bind("<Enter>", on_enter)
-            w.bind("<Leave>", on_leave)
+        if enabled:
+            w.bind("<Button-1>", lambda e, c=command: c() if c else None)
+            try:
+                w.config(cursor="hand2")
+            except tk.TclError:
+                pass
+            if bg != WHITE:
+                w.bind("<Enter>", on_enter)
+                w.bind("<Leave>", on_leave)
     return frame
 
 
+def widget_texts(widget, out=None):
+    """收集控件树里的全部文字（自检用）"""
+    out = [] if out is None else out
+    try:
+        t = widget.cget("text")
+        if t:
+            out.append(str(t))
+    except tk.TclError:
+        pass
+    for child in widget.winfo_children():
+        widget_texts(child, out)
+    return out
+
+
 # ---------------------------------------------------------------------------
-# 三、一轮答题的状态
+# 三、用户数据（家长 / 孩子）
+# ---------------------------------------------------------------------------
+class UserStore:
+    def __init__(self, base_dir):
+        self.base_dir = base_dir
+        self.path = os.path.join(base_dir, USER_FILE)
+        self.users = []
+        self.current = None
+        self.load()
+
+    # ---- 读写 ----
+    def load(self):
+        if os.path.exists(self.path):
+            try:
+                with open(self.path, "r", encoding="utf-8") as fp:
+                    data = json.load(fp)
+                self.users = [u for u in data.get("users", []) if u.get("name")]
+                self.current = data.get("current")
+            except Exception:
+                self.users, self.current = [], None
+        else:
+            # v1.1 首次使用：按约定清空 v1.0 的旧历史记录
+            legacy = os.path.join(self.base_dir, LEGACY_HISTORY)
+            if os.path.exists(legacy):
+                try:
+                    os.remove(legacy)
+                except Exception:
+                    pass
+        names = [u["name"] for u in self.users]
+        if self.current not in names:
+            self.current = names[0] if names else None
+
+    def save(self):
+        try:
+            with open(self.path, "w", encoding="utf-8") as fp:
+                json.dump({"users": self.users, "current": self.current},
+                          fp, ensure_ascii=False, indent=2)
+            return True
+        except Exception:
+            return False
+
+    # ---- 查询 ----
+    def has_users(self):
+        return bool(self.users)
+
+    def names(self):
+        return [u["name"] for u in self.users]
+
+    def children(self):
+        return [u["name"] for u in self.users if u["role"] == ROLE_CHILD]
+
+    def parents(self):
+        return [u["name"] for u in self.users if u["role"] == ROLE_PARENT]
+
+    def find(self, name):
+        for u in self.users:
+            if u["name"] == name:
+                return u
+        return None
+
+    def role_of(self, name):
+        u = self.find(name)
+        return u["role"] if u else None
+
+    def is_parent(self, name=None):
+        return self.role_of(name or self.current) == ROLE_PARENT
+
+    def requires_pin(self, name):
+        return self.role_of(name) == ROLE_PARENT
+
+    def verify(self, name, pin):
+        u = self.find(name)
+        if not u or u["role"] != ROLE_PARENT:
+            return False
+        salt, expected = u.get("salt"), u.get("pw")
+        if not salt or not expected:
+            return False
+        _, got = make_pin_hash(pin, salt)
+        return got == expected
+
+    # ---- 增删改 ----
+    def validate_name(self, name, exclude_self=False):
+        name = (name or "").strip()
+        if not name:
+            return "请输入姓名"
+        if len(name) > 10:
+            return "姓名最多 10 个字"
+        if name in self.names() and not exclude_self:
+            return "这个姓名已经用过了"
+        return None
+
+    def validate_pin(self, pin):
+        if not re.fullmatch(r"\d{4,6}", pin or ""):
+            return "密码需为 4-6 位数字"
+        return None
+
+    def add_user(self, name, role, pin=None):
+        name = (name or "").strip()
+        err = self.validate_name(name)
+        if err:
+            return False, err
+        if role == ROLE_PARENT:
+            err = self.validate_pin(pin)
+            if err:
+                return False, err
+        user = {"name": name, "role": role, "salt": None, "pw": None}
+        if role == ROLE_PARENT:
+            user["salt"], user["pw"] = make_pin_hash(pin)
+        self.users.append(user)
+        if not self.current:
+            self.current = name
+        self.save()
+        return True, "已创建用户「%s」" % name
+
+    def can_remove(self, name):
+        u = self.find(name)
+        if not u:
+            return False, "用户不存在"
+        if name == self.current:
+            return False, "不能删除当前登录的用户"
+        if len(self.users) <= 1:
+            return False, "至少要保留一个用户"
+        if u["role"] == ROLE_PARENT and len(self.parents()) <= 1:
+            return False, "至少要保留一名家长"
+        return True, ""
+
+    def remove_user(self, name):
+        ok, msg = self.can_remove(name)
+        if not ok:
+            return False, msg
+        self.users = [u for u in self.users if u["name"] != name]
+        self.save()
+        return True, "已删除用户「%s」" % name
+
+    def set_pin(self, name, pin):
+        u = self.find(name)
+        if not u:
+            return False, "用户不存在"
+        err = self.validate_pin(pin)
+        if err:
+            return False, err
+        u["salt"], u["pw"] = make_pin_hash(pin)
+        self.save()
+        return True, "密码已修改"
+
+    def set_current(self, name):
+        if self.find(name):
+            self.current = name
+            self.save()
+            return True
+        return False
+
+
+# ---------------------------------------------------------------------------
+# 四、一轮答题的状态
 # ---------------------------------------------------------------------------
 class RoundState:
     def __init__(self, questions, mode, time_limit=None):
         self.questions = questions
         self.mode = mode
         self.time_limit = time_limit
-        self.records = []           # [{"q":Question, "ans":str|None, "status":"right/wrong/skip"}]
+        self.records = []
         self.index = 0
         self.start_ts = None
         self.elapsed = 0.0
         self.finished = False
-        self.locked = False         # 时间到后锁定
+        self.locked = False
         self.timed_out = False
 
 
 # ---------------------------------------------------------------------------
-# 四、主程序
+# 五、模态对话框
+# ---------------------------------------------------------------------------
+class Modal(tk.Toplevel):
+    def __init__(self, parent, title, w, h):
+        super().__init__(parent, bg=PAGE_BG)
+        self.result = None
+        self.title(title)
+        self.resizable(False, False)
+        self.transient(parent)
+        try:
+            parent.update_idletasks()
+            x = parent.winfo_rootx() + max(0, (parent.winfo_width() - w) // 2)
+            y = parent.winfo_rooty() + max(0, (parent.winfo_height() - h) // 3)
+            self.geometry("%dx%d+%d+%d" % (w, h, x, y))
+        except tk.TclError:
+            self.geometry("%dx%d" % (w, h))
+        self.protocol("WM_DELETE_WINDOW", self.close)
+        self.body = tk.Frame(self, bg=PAGE_BG)
+        self.body.pack(fill="both", expand=True, padx=20, pady=16)
+
+    def close(self):
+        try:
+            self.grab_release()
+        except tk.TclError:
+            pass
+        self.destroy()
+
+    def show(self):
+        try:
+            self.grab_set()
+        except tk.TclError:
+            pass
+        self.wait_window()
+        return self.result
+
+
+def _pin_entry(parent, width=10):
+    return tk.Entry(parent, show="●", justify="center", font=(FONT, 18), width=width,
+                    bd=0, relief="flat", highlightthickness=2,
+                    highlightbackground=BORDER, highlightcolor=BLUE,
+                    insertbackground=BLUE)
+
+
+class PinDialog(Modal):
+    """家长密码验证"""
+
+    def __init__(self, parent, store, user):
+        super().__init__(parent, "家长验证", 380, 260)
+        self.store, self.user = store, user
+        tk.Label(self.body, text="请输入家长「%s」的密码" % user, bg=PAGE_BG,
+                 fg=TEXT_DK, font=(FONT, 14)).pack(pady=(4, 12))
+        self.pin = _pin_entry(self.body)
+        self.pin.pack(ipady=4)
+        self.pin.focus_set()
+        self.err = tk.Label(self.body, text="", bg=PAGE_BG, fg=RED, font=(FONT, 11))
+        self.err.pack(pady=(8, 0))
+        btns = tk.Frame(self.body, bg=PAGE_BG)
+        btns.pack(pady=(12, 0))
+        make_button(btns, "确认", None, BLUE, WHITE, None, self.ok, 110, 40, 14, 11).pack(side="left", padx=6)
+        make_button(btns, "取消", None, WHITE, TEXT_DK, None, self.close, 110, 40, 14, 11,
+                    border=BORDER).pack(side="left", padx=6)
+        tk.Label(self.body, text="忘记密码？删除软件旁的用户配置文件即可重置",
+                 bg=PAGE_BG, fg=TEXT_MUT, font=(FONT, 11), wraplength=320).pack(pady=(14, 0))
+        self.pin.bind("<Return>", lambda e: self.ok())
+
+    def ok(self):
+        if self.store.verify(self.user, self.pin.get().strip()):
+            self.result = True
+            self.close()
+        else:
+            self.err.config(text="密码错误，请重试")
+            self.pin.delete(0, "end")
+            self.pin.focus_set()
+
+
+class PickUserDialog(Modal):
+    """选择用户（切换用户 / 选择查看对象）"""
+
+    def __init__(self, parent, store, title="切换用户", current=None):
+        users = store.users
+        h = 140 + 52 * max(1, len(users))
+        super().__init__(parent, title, 380, min(h, 520))
+        self.store, self.current = store, current
+        tk.Label(self.body, text=title, bg=PAGE_BG, fg=TITLE_DK,
+                 font=(FONT, 16, "bold")).pack(pady=(0, 10))
+        for u in users:
+            is_parent = u["role"] == ROLE_PARENT
+            bg = CARD_BG if is_parent else WHITE
+            row = tk.Frame(self.body, bg=bg, height=44,
+                           highlightthickness=1, highlightbackground=BORDER)
+            row.pack(fill="x", pady=3)
+            row.pack_propagate(False)
+            icon = person_icon(row, 0, 0, 6, ORANGE if is_parent else BLUE, bg)
+            icon.pack(side="left", padx=(12, 8))
+            name = tk.Label(row, text=u["name"], bg=bg, fg=TITLE_DK,
+                            font=(FONT, 14, "bold"))
+            name.pack(side="left")
+            tip = "家长 · 需密码" if is_parent else "学生 · 一键切换"
+            t = tk.Label(row, text=tip, bg=bg, fg=ROLE_COLOR[u["role"]], font=(FONT, 11))
+            t.pack(side="right", padx=12)
+            if u["name"] == current:
+                tk.Label(row, text="当前", bg=bg, fg=TEXT_MUT,
+                         font=(FONT, 11)).pack(side="right", padx=6)
+            for w in (row, name, t, icon):
+                w.bind("<Button-1>", lambda e, n=u["name"]: self.choose(n))
+                try:
+                    w.config(cursor="hand2")
+                except tk.TclError:
+                    pass
+        make_button(self.body, "取消", None, CARD_BG, TEXT_DK, None, self.close,
+                    110, 36, 13, 11, border=BORDER).pack(pady=(12, 0))
+
+    def choose(self, name):
+        self.result = name
+        self.close()
+
+
+class AddUserDialog(Modal):
+    """添加用户"""
+
+    def __init__(self, parent, store):
+        super().__init__(parent, "添加用户", 420, 400)
+        self.store = store
+        tk.Label(self.body, text="添加用户", bg=PAGE_BG, fg=TITLE_DK,
+                 font=(FONT, 16, "bold")).pack(pady=(0, 10))
+
+        self.role = tk.StringVar(value=ROLE_CHILD)
+        row = tk.Frame(self.body, bg=PAGE_BG)
+        row.pack(pady=(0, 10))
+        for val, txt in ((ROLE_CHILD, "孩子（免密码）"), (ROLE_PARENT, "家长（需密码）")):
+            tk.Radiobutton(row, text=txt, value=val, variable=self.role,
+                           bg=PAGE_BG, fg=TEXT_DK, font=(FONT, 12),
+                           activebackground=PAGE_BG, selectcolor=WHITE,
+                           command=self._sync_state).pack(side="left", padx=8)
+
+        tk.Label(self.body, text="姓名", bg=PAGE_BG, fg=TEXT_MUT,
+                 font=(FONT, 11)).pack(anchor="w")
+        self.name = tk.Entry(self.body, font=(FONT, 14), bd=0, relief="flat",
+                             highlightthickness=2, highlightbackground=BORDER,
+                             highlightcolor=BLUE, insertbackground=BLUE)
+        self.name.pack(fill="x", ipady=4, pady=(2, 10))
+
+        self.pin_label = tk.Label(self.body, text="密码（4-6 位数字）", bg=PAGE_BG,
+                                  fg=TEXT_MUT, font=(FONT, 11))
+        self.pin_label.pack(anchor="w")
+        self.pin = _pin_entry(self.body, width=12)
+        self.pin.pack(anchor="w", ipady=3, pady=(2, 10))
+
+        self.err = tk.Label(self.body, text="", bg=PAGE_BG, fg=RED, font=(FONT, 11))
+        self.err.pack()
+        btns = tk.Frame(self.body, bg=PAGE_BG)
+        btns.pack(pady=(10, 0))
+        make_button(btns, "确定", None, BLUE, WHITE, None, self.ok, 110, 40, 14, 11).pack(side="left", padx=6)
+        make_button(btns, "取消", None, WHITE, TEXT_DK, None, self.close, 110, 40, 14, 11,
+                    border=BORDER).pack(side="left", padx=6)
+        self._sync_state()
+        self.name.focus_set()
+
+    def _sync_state(self):
+        if self.role.get() == ROLE_PARENT:
+            self.pin.config(state="normal", highlightbackground=BORDER)
+        else:
+            self.pin.delete(0, "end")
+            self.pin.config(state="disabled", highlightbackground=CARD_BG)
+
+    def ok(self):
+        name = self.name.get().strip()
+        role = self.role.get()
+        pin = self.pin.get().strip() if role == ROLE_PARENT else None
+        ok, msg = self.store.add_user(name, role, pin)
+        if ok:
+            self.result = name
+            self.close()
+        else:
+            self.err.config(text=msg)
+
+
+class ChangePinDialog(Modal):
+    """修改家长密码"""
+
+    def __init__(self, parent, store, user):
+        super().__init__(parent, "修改密码", 400, 360)
+        self.store, self.user = store, user
+        tk.Label(self.body, text="修改「%s」的密码" % user, bg=PAGE_BG, fg=TITLE_DK,
+                 font=(FONT, 16, "bold")).pack(pady=(0, 10))
+        for label, attr in (("原密码", "old"), ("新密码（4-6 位数字）", "new"),
+                            ("再输一遍新密码", "new2")):
+            tk.Label(self.body, text=label, bg=PAGE_BG, fg=TEXT_MUT,
+                     font=(FONT, 11)).pack(anchor="w")
+            e = _pin_entry(self.body, width=12)
+            e.pack(anchor="w", ipady=3, pady=(2, 8))
+            setattr(self, attr, e)
+        self.err = tk.Label(self.body, text="", bg=PAGE_BG, fg=RED, font=(FONT, 11))
+        self.err.pack()
+        btns = tk.Frame(self.body, bg=PAGE_BG)
+        btns.pack(pady=(10, 0))
+        make_button(btns, "确定", None, BLUE, WHITE, None, self.ok, 110, 40, 14, 11).pack(side="left", padx=6)
+        make_button(btns, "取消", None, WHITE, TEXT_DK, None, self.close, 110, 40, 14, 11,
+                    border=BORDER).pack(side="left", padx=6)
+        self.old.focus_set()
+
+    def ok(self):
+        if not self.store.verify(self.user, self.old.get().strip()):
+            self.err.config(text="原密码不正确")
+            return
+        new, new2 = self.new.get().strip(), self.new2.get().strip()
+        if new != new2:
+            self.err.config(text="两次输入的新密码不一致")
+            return
+        ok, msg = self.store.set_pin(self.user, new)
+        if ok:
+            self.result = True
+            self.close()
+        else:
+            self.err.config(text=msg)
+
+
+class QuitDialog(Modal):
+    """答题中途关闭：保存并退出 / 直接退出 / 继续答题"""
+
+    def __init__(self, parent, answered, right, can_save):
+        super().__init__(parent, "提示", 400, 370)
+        tk.Label(self.body, text="本次答题还没结束", bg=PAGE_BG, fg=TITLE_DK,
+                 font=(FONT, 15, "bold")).pack(pady=(4, 8))
+        if can_save:
+            tk.Label(self.body, text="已答 %d 题（对 %d 题）" % (answered, right),
+                     bg=PAGE_BG, fg=TEXT_DK, font=(FONT, 13)).pack()
+            tk.Label(self.body, text="要保存这次的部分成绩吗？", bg=PAGE_BG,
+                     fg=TEXT_DK, font=(FONT, 13)).pack(pady=(4, 12))
+            make_button(self.body, "保存并退出", None, GREEN, WHITE, None,
+                        lambda: self.choose("save"), 240, 40, 14, 11).pack(pady=4)
+        else:
+            tk.Label(self.body, text="还没有作答，无法保存成绩", bg=PAGE_BG,
+                     fg=TEXT_MUT, font=(FONT, 13)).pack(pady=(4, 12))
+        make_button(self.body, "直接退出", None, WHITE, TEXT_DK, None,
+                    lambda: self.choose("discard"), 240, 40, 14, 11,
+                    border=BORDER).pack(pady=4)
+        make_button(self.body, "继续答题", None, BLUE, WHITE, None,
+                    lambda: self.choose("cancel"), 240, 40, 14, 11).pack(pady=4)
+        if can_save:
+            tk.Label(self.body, text="保存后按已答题数计算正确率，历史中标记「中途退出」",
+                     bg=PAGE_BG, fg=TEXT_MUT, font=(FONT, 11),
+                     wraplength=340).pack(pady=(10, 0))
+
+    def choose(self, value):
+        self.result = value
+        self.close()
+
+
+# ---------------------------------------------------------------------------
+# 六、主程序
 # ---------------------------------------------------------------------------
 class App:
-    def __init__(self, root, selftest=False):
+    def __init__(self, root, selftest=False, base_dir=None):
         self.root = root
         self.selftest = selftest
-        self.history_path = self._resolve_history_path()
+        self.base_dir = base_dir or resolve_base_dir()
+        self.store = UserStore(self.base_dir)
         self.round = None
         self.result_data = None
         self.screen = "menu"
         self._hint_is_error = False
         self.wrong_rows_count = 0
         self.history_rows_count = 0
+        self.hist_view_user = None
+        self.wizard_parent = None
 
         if not selftest:
             root.title(APP_TITLE)
@@ -277,18 +737,22 @@ class App:
         self._build_result()
         self._build_wrong()
         self._build_history()
+        self._build_users()
+        self._build_wizard()
 
         root.protocol("WM_DELETE_WINDOW", self.on_close)
         for seq in ("<Return>", "<KP_Enter>"):
             root.bind_all(seq, self._on_enter_key)
 
-        self.show_menu()
+        if self.store.has_users():
+            self.show_menu()
+        else:
+            self.show_wizard()
 
-    # ---------------- 窗口 ----------------
+    # ---------------- 通用 ----------------
     def _center_window(self):
         self.root.update_idletasks()
-        sw = self.root.winfo_screenwidth()
-        sh = self.root.winfo_screenheight()
+        sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
         x = max(0, (sw - WINDOW_W) // 2)
         y = max(0, (sh - WINDOW_H) // 2 - 20)
         self.root.geometry("%dx%d+%d+%d" % (WINDOW_W, WINDOW_H, x, y))
@@ -299,37 +763,196 @@ class App:
         self.screens[name].pack(fill="both", expand=True)
         self.screen = name
 
+    def current_user(self):
+        return self.store.current
+
+    def is_parent(self):
+        return self.store.is_parent()
+
+    def can_delete_records(self):
+        """删改历史记录的权限：仅家长"""
+        return self.is_parent()
+
     def on_close(self):
-        """关闭保护：仅答题进行中弹确认"""
-        if self.round and not self.round.finished:
-            if not messagebox.askyesno(APP_TITLE, "确定退出吗？本轮成绩不会保存"):
-                return
+        if self.round and not self.round.finished and self.screen == "quiz":
+            self._ask_quit_round()
+            return
         self.root.destroy()
 
     # ---------------- 主菜单 ----------------
     def _build_menu(self):
         f = tk.Frame(self.container, bg=PAGE_BG)
         self.screens["menu"] = f
+
+        bar_wrap = tk.Frame(f, bg=PAGE_BG)
+        bar_wrap.pack(fill="x", padx=40, pady=(16, 0))
+        self.user_bar = tk.Frame(bar_wrap, bg=BLUE_LT, height=46)
+        self.user_bar.pack(fill="x")
+        self.user_bar.pack_propagate(False)
+        self.user_icon_holder = tk.Frame(self.user_bar, bg=BLUE_LT)
+        self.user_icon_holder.pack(side="left", padx=(14, 4))
+        self.user_label = tk.Label(self.user_bar, text="", bg=BLUE_LT, fg=TEXT_DK,
+                                   font=(FONT, 13, "bold"))
+        self.user_label.pack(side="left")
+        make_button(self.user_bar, "切换", None, WHITE, TEXT_DK, None,
+                    self.open_switch_dialog, 66, 30, 12, 11,
+                    border=BORDER).pack(side="right", padx=10)
+
         tk.Label(f, text="100 以内加减法", bg=PAGE_BG, fg=TITLE_DK,
-                 font=(FONT, 34, "bold")).pack(pady=(72, 6))
+                 font=(FONT, 32, "bold")).pack(pady=(26, 4))
         tk.Label(f, text="小学二年级口算练习", bg=PAGE_BG, fg=TEXT_MUT,
-                 font=(FONT, 14)).pack()
+                 font=(FONT, 13)).pack()
 
         wrap = tk.Frame(f, bg=PAGE_BG)
-        wrap.pack(pady=34)
+        wrap.pack(pady=24)
         make_button(wrap, "练习模式", "20道题 · 不限时间", BLUE, WHITE, BLUE_LT,
-                    self.start_practice, 340, 104, 22, 12).pack(pady=9)
+                    self.start_practice, 340, 96, 21, 12).pack(pady=8)
         make_button(wrap, "测验模式", "100道题 · 限时20分钟", ORANGE, WHITE, ORANGE_LT,
-                    self.start_test, 340, 104, 22, 12).pack(pady=9)
-        make_button(wrap, "历史成绩", None, CARD_BG, TEXT_DK, None,
-                    self.show_history, 170, 44, 14, 11, border=BORDER).pack(pady=(16, 0))
+                    self.start_test, 340, 96, 21, 12).pack(pady=8)
+
+        small = tk.Frame(f, bg=PAGE_BG)
+        small.pack(pady=(6, 0))
+        make_button(small, "历史成绩", None, CARD_BG, TEXT_DK, None,
+                    self.show_history, 150, 40, 13, 11, border=BORDER).pack(side="left", padx=6)
+        self.manage_btn = make_button(small, "用户管理", None, CARD_BG, TEXT_DK, None,
+                                      self.show_users, 150, 40, 13, 11, border=BORDER)
 
         tk.Label(f, text="选一个开始吧！", bg=PAGE_BG, fg=TEXT_MUT,
-                 font=(FONT, 13)).pack(pady=(16, 0))
+                 font=(FONT, 12)).pack(pady=(14, 0))
+
+    def refresh_user_bar(self):
+        for w in self.user_icon_holder.winfo_children():
+            w.destroy()
+        name = self.current_user()
+        if not name:
+            return
+        role = self.store.role_of(name)
+        color = ORANGE if role == ROLE_PARENT else BLUE
+        person_icon(self.user_icon_holder, 0, 0, 7, color, BLUE_LT).pack()
+        self.user_label.config(text="当前：%s（%s）" % (name, ROLE_NAME[role]))
+        if role == ROLE_PARENT:
+            if not self.manage_btn.winfo_ismapped():
+                self.manage_btn.pack(side="left", padx=6)
+        else:
+            self.manage_btn.pack_forget()
 
     def show_menu(self):
         self.round = None
+        self.result_data = None
+        self.hist_view_user = self.current_user()
+        self.refresh_user_bar()
         self._show("menu")
+
+    def open_switch_dialog(self):
+        name = PickUserDialog(self.root, self.store, "切换用户",
+                              current=self.current_user()).show()
+        if not name or name == self.current_user():
+            return
+        if self.store.requires_pin(name) and not PinDialog(self.root, self.store, name).show():
+            return
+        self.switch_user(name)
+
+    def switch_user(self, name):
+        self.store.set_current(name)
+        self.result_data = None
+        self.hist_view_user = name
+        self.show_menu()
+
+    # ---------------- 首次运行向导 ----------------
+    def _build_wizard(self):
+        f = tk.Frame(self.container, bg=PAGE_BG)
+        self.screens["wizard"] = f
+        tk.Label(f, text="欢迎使用口算小达人", bg=PAGE_BG, fg=TITLE_DK,
+                 font=(FONT, 26, "bold")).pack(pady=(44, 6))
+        tk.Label(f, text="先创建家庭成员，之后可以随时在主界面切换",
+                 bg=PAGE_BG, fg=TEXT_MUT, font=(FONT, 13)).pack()
+        self.wiz_step_label = tk.Label(f, text="", bg=PAGE_BG, fg=TEXT_DK,
+                                       font=(FONT, 15, "bold"))
+        self.wiz_step_label.pack(pady=(22, 12))
+
+        self.wiz_body = tk.Frame(f, bg=CARD_BG, width=520, height=340)
+        self.wiz_body.pack()
+        self.wiz_body.pack_propagate(False)
+        self.wiz_step1 = tk.Frame(self.wiz_body, bg=CARD_BG)
+        self.wiz_step2 = tk.Frame(self.wiz_body, bg=CARD_BG)
+        self._build_wizard_step1()
+        self._build_wizard_step2()
+
+    def _wiz_field(self, parent, label):
+        tk.Label(parent, text=label, bg=CARD_BG, fg=TEXT_MUT,
+                 font=(FONT, 11)).pack(anchor="w")
+        e = tk.Entry(parent, font=(FONT, 14), width=24, bd=0, relief="flat",
+                     highlightthickness=2, highlightbackground=BORDER,
+                     highlightcolor=BLUE, insertbackground=BLUE)
+        e.pack(ipady=4, pady=(2, 8))
+        return e
+
+    def _build_wizard_step1(self):
+        p = self.wiz_step1
+        self.wp_name = self._wiz_field(p, "家长姓名")
+        tk.Label(p, text="设置密码（4-6 位数字）", bg=CARD_BG, fg=TEXT_MUT,
+                 font=(FONT, 11)).pack(anchor="w")
+        self.wp_pin = _pin_entry(p, width=12)
+        self.wp_pin.pack(anchor="w", ipady=3, pady=(2, 8))
+        tk.Label(p, text="再输一遍密码", bg=CARD_BG, fg=TEXT_MUT,
+                 font=(FONT, 11)).pack(anchor="w")
+        self.wp_pin2 = _pin_entry(p, width=12)
+        self.wp_pin2.pack(anchor="w", ipady=3, pady=(2, 6))
+        self.wiz_err = tk.Label(p, text="", bg=CARD_BG, fg=RED, font=(FONT, 11))
+        self.wiz_err.pack()
+        make_button(p, "下一步", None, BLUE, WHITE, None, self.wizard_next,
+                    150, 40, 14, 11).pack(pady=(8, 0))
+
+    def _build_wizard_step2(self):
+        p = self.wiz_step2
+        self.wc_name = self._wiz_field(p, "孩子姓名")
+        self.wiz_err2 = tk.Label(p, text="", bg=CARD_BG, fg=RED, font=(FONT, 11))
+        self.wiz_err2.pack(pady=(6, 0))
+        make_button(p, "完成，开始使用", None, GREEN, WHITE, None, self.wizard_finish,
+                    220, 44, 14, 11).pack(pady=(16, 0))
+        tk.Label(p, text="之后可以在「用户管理」里添加更多孩子或家长",
+                 bg=CARD_BG, fg=TEXT_MUT, font=(FONT, 11)).pack(pady=(12, 0))
+
+    def show_wizard(self):
+        self.wiz_step1.pack(fill="both", expand=True, padx=40, pady=20)
+        self.wiz_step2.pack_forget()
+        self.wiz_step_label.config(text="第 1 步 / 共 2 步：创建家长")
+        self.wiz_err.config(text="")
+        self.wp_name.delete(0, "end")
+        self.wp_pin.delete(0, "end")
+        self.wp_pin2.delete(0, "end")
+        self._show("wizard")
+        self.wp_name.focus_set()
+
+    def wizard_next(self):
+        name = self.wp_name.get().strip()
+        pin, pin2 = self.wp_pin.get().strip(), self.wp_pin2.get().strip()
+        err = self.store.validate_name(name)
+        if not err:
+            err = self.store.validate_pin(pin)
+        if not err and pin != pin2:
+            err = "两次输入的密码不一致"
+        if err:
+            self.wiz_err.config(text=err)
+            return
+        self.store.add_user(name, ROLE_PARENT, pin)
+        self.wizard_parent = name
+        self.wiz_step1.pack_forget()
+        self.wiz_step2.pack(fill="both", expand=True, padx=40, pady=20)
+        self.wiz_step_label.config(text="第 2 步 / 共 2 步：创建孩子")
+        self.wc_name.delete(0, "end")
+        self.wiz_err2.config(text="")
+        self.wc_name.focus_set()
+
+    def wizard_finish(self):
+        name = self.wc_name.get().strip()
+        err = self.store.validate_name(name)
+        if err:
+            self.wiz_err2.config(text=err)
+            return
+        self.store.add_user(name, ROLE_CHILD)
+        self.store.set_current(name)
+        self.show_menu()
 
     # ---------------- 答题界面 ----------------
     def _build_quiz(self):
@@ -340,6 +963,9 @@ class App:
         top.pack(fill="x", padx=50, pady=(24, 0))
         self.q_label = tk.Label(top, text="", bg=PAGE_BG, fg=TEXT_DK, font=(FONT, 16, "bold"))
         self.q_label.pack(side="left")
+        self.quiz_user_label = tk.Label(top, text="", bg=PAGE_BG, fg=TEXT_MUT,
+                                        font=(FONT, 11))
+        self.quiz_user_label.pack(side="left", padx=12)
 
         right = tk.Frame(top, bg=PAGE_BG)
         right.pack(side="right")
@@ -358,7 +984,6 @@ class App:
         self.card = tk.Frame(f, bg=CARD_BG, width=800, height=212)
         self.card.pack(pady=(20, 0))
         self.card.pack_propagate(False)
-
         row = tk.Frame(self.card, bg=CARD_BG)
         row.place(relx=0.5, rely=0.5, anchor="center")
         self.eq_label = tk.Label(row, text="", bg=CARD_BG, fg=TITLE_DK,
@@ -389,7 +1014,6 @@ class App:
         self.skip_btn.pack(side="left")
 
     def _validate_answer(self, proposed):
-        """输入校验：仅 ASCII 数字，最多 3 位"""
         return len(proposed) <= 3 and all(c in "0123456789" for c in proposed)
 
     def _clear_error(self, event=None):
@@ -401,7 +1025,6 @@ class App:
             self.entry.config(highlightbackground=BLUE, highlightcolor=BLUE)
 
     def _flash_empty(self):
-        """答案为空：输入框变红 + 红字提示，不切题"""
         self._hint_is_error = True
         self.hint.config(text="请先输入答案，或点击【跳过】", fg=RED)
         self.entry.config(highlightbackground=RED, highlightcolor=RED)
@@ -409,6 +1032,7 @@ class App:
     def _update_quiz_top(self):
         rs = self.round
         self.q_label.config(text="第 %d 题 / 共 %d 题" % (rs.index + 1, len(rs.questions)))
+        self.quiz_user_label.config(text="答题人：%s" % self.current_user())
         self.prog.delete("all")
         w = 800
         round_rect(self.prog, 0, 2, w, 10, 4, fill=CARD_BG, outline="")
@@ -448,7 +1072,6 @@ class App:
         self._begin_round(generate_round(MODE_COUNT[MODE_TEST]), MODE_TEST, TEST_TIME_LIMIT)
 
     def start_review(self):
-        """错题重练：用当前错题本重新组卷（动态错题本）"""
         if not self.result_data or not self.result_data["wrong"]:
             return
         qs = [r["q"] for r in self.result_data["wrong"]]
@@ -456,7 +1079,6 @@ class App:
         self._begin_round(qs, MODE_REVIEW, None)
 
     def _schedule_tick(self):
-        """计时器循环（带轮次守卫，避免重复计时链）"""
         gen = getattr(self, "_tick_gen", 0)
 
         def run():
@@ -504,7 +1126,6 @@ class App:
             pass
 
     def submit_answer(self):
-        """有答案才切题；空答案被拦截"""
         rs = self.round
         if not rs or rs.finished or rs.locked:
             return
@@ -537,35 +1158,60 @@ class App:
         if self.screen == "quiz" and self.round and not self.round.finished:
             self.submit_answer()
 
+    def _build_result_data(self, rs, total_override=None, partial=False):
+        total = total_override if total_override else len(rs.questions)
+        right = sum(1 for r in rs.records if r["status"] == "right")
+        acc = right / float(total) if total else 0.0
+        wrong = [r for r in rs.records if r["status"] != "right"]
+        return {
+            "mode": rs.mode, "right": right, "total": total, "acc": acc,
+            "elapsed": rs.elapsed, "timed_out": rs.timed_out,
+            "wrong": wrong, "stars": compute_stars(acc), "partial": partial,
+        }
+
     def finish_round(self, timed_out=False):
         rs = self.round
         if not rs or rs.finished:
             return
         rs.finished = True
         rs.timed_out = rs.timed_out or timed_out
-
         if rs.timed_out and rs.time_limit:
             rs.elapsed = float(rs.time_limit)
         else:
             rs.elapsed = max(0.0, time.time() - (rs.start_ts or time.time()))
-
         total = len(rs.questions)
-        # 时间到未作答的题：计为未答（等同跳过，计为错误）
         while len(rs.records) < total:
             rs.records.append({"q": rs.questions[len(rs.records)], "ans": None,
                                "status": "skip"})
-
-        right = sum(1 for r in rs.records if r["status"] == "right")
-        acc = right / float(total) if total else 0.0
-        wrong = [r for r in rs.records if r["status"] != "right"]
-
-        self.result_data = {
-            "mode": rs.mode, "right": right, "total": total, "acc": acc,
-            "elapsed": rs.elapsed, "timed_out": rs.timed_out,
-            "wrong": wrong, "stars": compute_stars(acc),
-        }
+        self.result_data = self._build_result_data(rs)
         if rs.mode in (MODE_PRACTICE, MODE_TEST):
-            self.save_history(rs, right, total, acc)
+            self.save_history(self.current_user(), self.result_data)
+        self._show_result()
+
+    def _ask_quit_round(self):
+        """答题中途关闭：保存并退出 / 直接退出 / 继续答题"""
+        rs = self.round
+        answered = len(rs.records)
+        right = sum(1 for r in rs.records if r["status"] == "right")
+        choice = QuitDialog(self.root, answered, right, answered >= 1).show()
+        if choice == "save":
+            self.save_partial_and_exit()
+        elif choice == "discard":
+            self.round = None
+            self.show_menu()
+
+    def save_partial_and_exit(self):
+        """中断保存：只保存已答部分，正确率按已答题数计算"""
+        rs = self.round
+        if not rs or not rs.records:
+            self.show_menu()
+            return
+        rs.finished = True
+        rs.elapsed = max(0.0, time.time() - (rs.start_ts or time.time()))
+        self.result_data = self._build_result_data(rs, total_override=len(rs.records),
+                                                   partial=True)
+        if rs.mode in (MODE_PRACTICE, MODE_TEST):
+            self.save_history(self.current_user(), self.result_data)
         self._show_result()
 
     # ---------------- 成绩界面 ----------------
@@ -591,19 +1237,21 @@ class App:
 
     def _show_result(self):
         d = self.result_data
-        self.res_stars.config(text="★" * d["stars"] + "☆" * (3 - d["stars"]) + "  " + encouragement(d["acc"]))
+        self.res_stars.config(text="★" * d["stars"] + "☆" * (3 - d["stars"]) +
+                                   "  " + encouragement(d["acc"]))
         self.res_score.config(text="%d / %d" % (d["right"], d["total"]))
         self.res_right.config(text="答对 %d 题" % d["right"])
         self.res_detail.config(text="正确率 %d%%　·　用时 %s"
                                     % (round(d["acc"] * 100), fmt_duration(d["elapsed"])))
-        if d["mode"] == MODE_TEST:
+        if d.get("partial"):
+            self.res_note.config(text="中途退出，按已答 %d 题计算" % d["total"])
+        elif d["mode"] == MODE_TEST:
             self.res_note.config(text=("时间到，已自动交卷" if d["timed_out"] else "在限定时间内完成"))
         else:
             self.res_note.config(text="")
 
         for w in self.res_btns.winfo_children():
             w.destroy()
-
         if d["mode"] == MODE_REVIEW:
             make_button(self.res_btns, "返回错题", None, BLUE, WHITE, None,
                         self.show_wrong_list, 170, 54, 16, 11).pack(side="left", padx=8)
@@ -611,7 +1259,6 @@ class App:
             make_button(self.res_btns, "再来一轮", None, BLUE, WHITE, None,
                         self.start_practice if d["mode"] == MODE_PRACTICE else self.start_test,
                         170, 54, 16, 11).pack(side="left", padx=8)
-        # 全对时也保留入口：进入后显示"全对，没有错题！"的庆祝页
         make_button(self.res_btns, "看看错题", None, ORANGE, WHITE, None,
                     self.show_wrong_list, 170, 54, 16, 11).pack(side="left", padx=8)
         make_button(self.res_btns, "返回菜单", None, WHITE, TEXT_DK, None,
@@ -644,7 +1291,6 @@ class App:
         self.wrong_canvas.bind("<Configure>",
                                lambda e: self.wrong_canvas.itemconfigure(
                                    self.wrong_window, width=e.width))
-
         btns = tk.Frame(f, bg=PAGE_BG)
         btns.pack(pady=(10, 20))
         self.wrong_btns = btns
@@ -661,7 +1307,7 @@ class App:
         self.wrong_rows_count = len(wrong)
 
         if not wrong:
-            self.wrong_sb.pack_forget()          # 无错题时不显示滚动条
+            self.wrong_sb.pack_forget()
             self.wrong_sum.config(text="全对，没有错题！太棒了！")
             tk.Label(self.wrong_inner, text="★★★", bg=PAGE_BG, fg=GOLD,
                      font=(FONT, 44)).pack(pady=(40, 8))
@@ -676,7 +1322,6 @@ class App:
             self._cell(head, "题目", 0, 360, TEXT_MUT, 12, bold=False, bg=CARD_BG)
             self._cell(head, "你的答案", 1, 150, TEXT_MUT, 12, bold=False, bg=CARD_BG)
             self._cell(head, "正确答案", 2, 150, TEXT_MUT, 12, bold=False, bg=CARD_BG)
-
             for i, r in enumerate(wrong):
                 q = r["q"]
                 bg = CARD_BG if i % 2 == 0 else WHITE
@@ -690,9 +1335,8 @@ class App:
                     self._cell(line, "%s" % r["ans"], 1, 150, RED, 14, bold=True, bg=bg)
                 self._cell(line, "%d" % q.answer, 2, 150, GREEN, 14, bold=True, bg=bg)
 
-        wheel_targets = [self.wrong_canvas, self.wrong_inner]
-        wheel_targets += self.wrong_inner.winfo_children()
-        for w in wheel_targets:
+        targets = [self.wrong_canvas, self.wrong_inner] + self.wrong_inner.winfo_children()
+        for w in targets:
             w.bind("<MouseWheel>", self._on_mousewheel_wrong)
 
         if wrong:
@@ -720,66 +1364,93 @@ class App:
     def _back_from_wrong(self):
         self._show_result()
 
-    # ---------------- 历史成绩 ----------------
-    def _resolve_history_path(self):
-        p = os.path.join(app_dir(), HISTORY_FILE)
-        try:
-            with open(p, "a", encoding="utf-8"):
-                pass
-            return p
-        except Exception:
-            return os.path.join(os.path.expanduser("~"), HISTORY_FILE)
+    # ---------------- 历史成绩（按用户隔离） ----------------
+    def history_path(self, user):
+        return os.path.join(self.base_dir, HISTORY_PREFIX + safe_filename(user) + ".txt")
 
-    def save_history(self, rs, right, total, acc):
-        """追加保存一次成绩（错题重练不保存）"""
+    def save_history(self, user, data):
+        """追加一条成绩；中途退出 / 时间到会追加标记"""
         ts = time.strftime("%Y-%m-%d %H:%M:%S")
         line = "%s | %s | 答对 %d/%d | 正确率 %d%% | 用时 %s" % (
-            ts, MODE_NAME[rs.mode], right, total, round(acc * 100), fmt_duration(rs.elapsed))
-        if rs.timed_out:
+            ts, MODE_NAME[data["mode"]], data["right"], data["total"],
+            round(data["acc"] * 100), fmt_duration(data["elapsed"]))
+        if data.get("partial"):
+            line += " | 中途退出"
+        elif data.get("timed_out"):
             line += " | 时间到"
+        path = self.history_path(user)
         try:
-            # 空文件（可能是启动时探测写权限创建的）也视为新文件，需写表头
-            new_file = (not os.path.exists(self.history_path)
-                        or os.path.getsize(self.history_path) == 0)
-            with open(self.history_path, "a", encoding="utf-8") as fp:
+            new_file = (not os.path.exists(path)) or os.path.getsize(path) == 0
+            with open(path, "a", encoding="utf-8") as fp:
                 if new_file:
-                    fp.write("口算小达人 历史成绩记录（每次答题一行）\n")
-                    fp.write("时间 | 模式 | 成绩 | 正确率 | 用时\n")
+                    fp.write(HISTORY_HEADER)
                 fp.write(line + "\n")
+            return True
         except Exception:
-            pass  # 写入失败不影响使用
+            return False
 
-    def read_history(self):
-        """读取历史记录，倒序（最新在前）"""
-        pat = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| (\S+) \| 答对 (\d+)/(\d+) "
-                         r"\| 正确率 (\d+)% \| 用时 (.+?)( \| 时间到)?$")
+    def read_history(self, user):
+        """读取某用户历史（最新在前），带物理行号便于删除"""
+        pat = re.compile(
+            r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| (\S+) \| 答对 (\d+)/(\d+) "
+            r"\| 正确率 (\d+)% \| 用时 (.+?)( \| (时间到|中途退出))?$")
         out = []
         try:
-            with open(self.history_path, "r", encoding="utf-8") as fp:
-                for line in fp:
-                    m = pat.match(line.strip())
+            with open(self.history_path(user), "r", encoding="utf-8") as fp:
+                for idx, raw in enumerate(fp):
+                    m = pat.match(raw.strip())
                     if m:
                         out.append({
-                            "time": m.group(1), "mode": m.group(2),
+                            "line_no": idx, "time": m.group(1), "mode": m.group(2),
                             "right": int(m.group(3)), "total": int(m.group(4)),
                             "acc": int(m.group(5)), "dur": m.group(6),
-                            "timed_out": bool(m.group(7)),
+                            "flag": m.group(8) or "",
                         })
         except Exception:
             pass
         out.reverse()
         return out
 
+    def delete_history_record(self, user, line_no):
+        """删除一条记录（仅家长）"""
+        if not self.can_delete_records():
+            return False
+        try:
+            path = self.history_path(user)
+            with open(path, "r", encoding="utf-8") as fp:
+                lines = fp.readlines()
+            if not (0 <= line_no < len(lines)):
+                return False
+            del lines[line_no]
+            with open(path, "w", encoding="utf-8") as fp:
+                fp.writelines(lines)
+            return True
+        except Exception:
+            return False
+
+    def clear_history(self, user):
+        """清空某用户历史（仅家长）"""
+        if not self.can_delete_records():
+            return False
+        try:
+            with open(self.history_path(user), "w", encoding="utf-8") as fp:
+                fp.write(HISTORY_HEADER)
+            return True
+        except Exception:
+            return False
+
     def _build_history(self):
         f = tk.Frame(self.container, bg=PAGE_BG)
         self.screens["history"] = f
         tk.Label(f, text="历史成绩", bg=PAGE_BG, fg=TITLE_DK,
-                 font=(FONT, 26, "bold")).pack(pady=(26, 2))
+                 font=(FONT, 26, "bold")).pack(pady=(24, 2))
         self.hist_sum = tk.Label(f, text="", bg=PAGE_BG, fg=TEXT_DK, font=(FONT, 14, "bold"))
-        self.hist_sum.pack(pady=(2, 8))
+        self.hist_sum.pack(pady=(2, 6))
+        self.hist_view_btn_holder = tk.Frame(f, bg=PAGE_BG)
+        self.hist_view_btn_holder.pack()
 
         table = tk.Frame(f, bg=PAGE_BG)
-        table.pack(fill="both", expand=True, padx=70)
+        table.pack(fill="both", expand=True, padx=60, pady=(8, 0))
         self.hist_canvas = tk.Canvas(table, bg=PAGE_BG, highlightthickness=0)
         sb = tk.Scrollbar(table, orient="vertical", command=self.hist_canvas.yview)
         self.hist_inner = tk.Frame(self.hist_canvas, bg=PAGE_BG)
@@ -796,18 +1467,32 @@ class App:
                               lambda e: self.hist_canvas.itemconfigure(
                                   self.hist_window, width=e.width))
 
-        tk.Label(f, text="完整记录同时保存在软件旁的 txt 文件里", bg=PAGE_BG,
-                 fg=TEXT_MUT, font=(FONT, 12)).pack(pady=(8, 6))
-        btns = tk.Frame(f, bg=PAGE_BG)
-        btns.pack(pady=(0, 20))
-        make_button(btns, "返回菜单", None, WHITE, TEXT_DK, None,
-                    self.show_menu, 180, 54, 16, 11, border=BORDER).pack()
+        self.hist_footer = tk.Label(f, text="", bg=PAGE_BG, fg=TEXT_MUT, font=(FONT, 11))
+        self.hist_footer.pack(pady=(6, 4))
+        self.hist_btns = tk.Frame(f, bg=PAGE_BG)
+        self.hist_btns.pack(pady=(0, 18))
 
-    def show_history(self):
-        for w in self.hist_inner.winfo_children():
-            w.destroy()
-        recs = self.read_history()
+    def show_history(self, view_user=None):
+        user = view_user or self.hist_view_user or self.current_user()
+        if not user:
+            self.show_menu()
+            return
+        self.hist_view_user = user
+        parent = self.can_delete_records()
+
+        for holder in (self.hist_inner, self.hist_btns, self.hist_view_btn_holder):
+            for w in holder.winfo_children():
+                w.destroy()
+
+        recs = self.read_history(user)
         self.history_rows_count = min(len(recs), HISTORY_DISPLAY_MAX)
+
+        if parent and len(self.store.users) > 1:
+            make_button(self.hist_view_btn_holder,
+                        "查看：%s（%s）▾" % (user, ROLE_NAME[self.store.role_of(user)]),
+                        None, CARD_BG, TEXT_DK, None, self._pick_view_user,
+                        220, 34, 12, 11, border=BORDER).pack()
+
         if recs:
             self.hist_sb.pack(side="right", fill="y")
             avg = round(sum(r["acc"] for r in recs) / float(len(recs)))
@@ -815,37 +1500,78 @@ class App:
                                       % (len(recs), avg, self.history_rows_count))
             head = tk.Frame(self.hist_inner, bg=CARD_BG)
             head.pack(fill="x", pady=(0, 2))
-            self._cell2(head, "时间", 0, 220, TEXT_MUT, 12, bold=False, bg=CARD_BG)
-            self._cell2(head, "模式", 1, 120, TEXT_MUT, 12, bold=False, bg=CARD_BG)
-            self._cell2(head, "成绩", 2, 140, TEXT_MUT, 12, bold=False, bg=CARD_BG)
-            self._cell2(head, "用时", 3, 160, TEXT_MUT, 12, bold=False, bg=CARD_BG)
+            cols = [("时间", 0, 210), ("模式", 1, 110), ("成绩", 2, 120), ("用时", 3, 150)]
+            if parent:
+                cols.append(("操作", 4, 70))
+            for label, col, w in cols:
+                self._cell3(head, label, col, w, TEXT_MUT, 12, bold=False, bg=CARD_BG)
 
             for i, r in enumerate(recs[:HISTORY_DISPLAY_MAX]):
                 bg = CARD_BG if i % 2 == 0 else WHITE
                 line = tk.Frame(self.hist_inner, bg=bg)
                 line.pack(fill="x", pady=1)
-                self._cell2(line, r["time"], 0, 220, TEXT_DK, 13, bg=bg)
-                self._cell2(line, r["mode"], 1, 120,
+                self._cell3(line, r["time"], 0, 210, TEXT_DK, 13, bg=bg)
+                self._cell3(line, r["mode"], 1, 110,
                             BLUE if r["mode"] == "练习模式" else ORANGE, 13, bg=bg)
-                self._cell2(line, "%d/%d" % (r["right"], r["total"]), 2, 140,
+                self._cell3(line, "%d/%d" % (r["right"], r["total"]), 2, 120,
                             GREEN if r["acc"] >= 90 else TEXT_DK, 13, bg=bg)
-                dur = r["dur"] + ("（时间到）" if r["timed_out"] else "")
-                self._cell2(line, dur, 3, 160, TEXT_DK, 13, bg=bg)
+                dur = r["dur"] + ("（%s）" % r["flag"] if r["flag"] else "")
+                self._cell3(line, dur, 3, 150, TEXT_DK, 13, bg=bg)
+                if parent:
+                    holder = tk.Frame(line, bg=bg, width=70, height=30)
+                    holder.grid(row=0, column=4, sticky="w")
+                    holder.grid_propagate(False)
+                    make_button(holder, "删", None, WHITE, RED, None,
+                                lambda u=user, n=r["line_no"]: self._delete_record(u, n),
+                                40, 24, 11, 11, border=RED).pack(pady=3)
+            self.hist_footer.config(text="共 %d 条记录 · 记录文件：%s"
+                                        % (len(recs), os.path.basename(self.history_path(user))))
         else:
-            self.hist_sb.pack_forget()           # 无记录时不显示滚动条
+            self.hist_sb.pack_forget()
             self.hist_sum.config(text="还没有记录，快去练习吧！")
             tk.Label(self.hist_inner, text="完成一轮练习或测验后，成绩会出现在这里",
-                     bg=PAGE_BG, fg=TEXT_MUT, font=(FONT, 14)).pack(pady=40)
+                     bg=PAGE_BG, fg=TEXT_MUT, font=(FONT, 14)).pack(pady=30)
+            self.hist_footer.config(text="")
 
-        wheel_targets = [self.hist_canvas, self.hist_inner] + self.hist_inner.winfo_children()
-        for w in wheel_targets:
+        if parent:
+            make_button(self.hist_btns, "清空记录", None, WHITE, RED, None,
+                        lambda: self._clear_records(user), 150, 46, 14, 11,
+                        border=RED).pack(side="left", padx=8)
+        make_button(self.hist_btns, "返回菜单", None, CARD_BG, TEXT_DK, None,
+                    self.show_menu, 150, 46, 14, 11, border=BORDER).pack(side="left", padx=8)
+
+        targets = [self.hist_canvas, self.hist_inner] + self.hist_inner.winfo_children()
+        for w in targets:
             w.bind("<MouseWheel>", self._on_mousewheel_hist)
         self._show("history")
 
-    def _cell2(self, parent, text, col, width, fg, size, bold=True, bg=WHITE):
+    def _pick_view_user(self):
+        name = PickUserDialog(self.root, self.store, "选择查看对象",
+                              current=self.hist_view_user).show()
+        if name:
+            self.show_history(name)
+
+    def _delete_record(self, user, line_no):
+        if not self.can_delete_records():
+            messagebox.showinfo(APP_TITLE, "只有家长可以删除历史记录")
+            return
+        if messagebox.askyesno(APP_TITLE, "确定删除这条成绩记录吗？"):
+            if self.delete_history_record(user, line_no):
+                self.show_history(user)
+
+    def _clear_records(self, user):
+        if not self.can_delete_records():
+            messagebox.showinfo(APP_TITLE, "只有家长可以清空历史记录")
+            return
+        if messagebox.askyesno(APP_TITLE,
+                               "确定清空「%s」的全部成绩记录吗？\n此操作不可撤销。" % user):
+            if self.clear_history(user):
+                self.show_history(user)
+
+    def _cell3(self, parent, text, col, width, fg, size, bold=True, bg=WHITE):
         lbl = tk.Label(parent, text=text, bg=bg, fg=fg,
                        font=(FONT, size, "bold" if bold else "normal"),
-                       anchor="w", padx=10, pady=7)
+                       anchor="w", padx=8, pady=6)
         lbl.grid(row=0, column=col, sticky="w")
         parent.grid_columnconfigure(col, minsize=width)
         lbl.bind("<MouseWheel>", self._on_mousewheel_hist)
@@ -857,12 +1583,102 @@ class App:
         except tk.TclError:
             pass
 
+    # ---------------- 用户管理（仅家长） ----------------
+    def _build_users(self):
+        f = tk.Frame(self.container, bg=PAGE_BG)
+        self.screens["users"] = f
+        tk.Label(f, text="用户管理", bg=PAGE_BG, fg=TITLE_DK,
+                 font=(FONT, 26, "bold")).pack(pady=(40, 4))
+        self.users_hint = tk.Label(f, text="", bg=PAGE_BG, fg=TEXT_MUT, font=(FONT, 12))
+        self.users_hint.pack(pady=(0, 14))
+        self.users_list = tk.Frame(f, bg=PAGE_BG, width=560, height=200)
+        self.users_list.pack()
+        self.users_list.pack_propagate(False)
+        btns = tk.Frame(f, bg=PAGE_BG)
+        btns.pack(pady=(20, 0))
+        make_button(btns, "添加用户", None, BLUE, WHITE, None, self.add_user_dialog,
+                    160, 46, 14, 11).pack(side="left", padx=8)
+        make_button(btns, "修改密码", None, WHITE, TEXT_DK, None, self.change_pin_dialog,
+                    160, 46, 14, 11, border=BORDER).pack(side="left", padx=8)
+        make_button(btns, "返回菜单", None, CARD_BG, TEXT_DK, None, self.show_menu,
+                    160, 46, 14, 11, border=BORDER).pack(side="left", padx=8)
+        tk.Label(f, text="规则：不能删除当前登录用户；至少保留一名家长；"
+                         "删除用户会同时删除其历史记录",
+                 bg=PAGE_BG, fg=TEXT_MUT, font=(FONT, 11)).pack(pady=(16, 0))
+
+    def show_users(self):
+        if not self.is_parent():
+            messagebox.showinfo(APP_TITLE, "只有家长可以管理用户")
+            self.show_menu()
+            return
+        for w in self.users_list.winfo_children():
+            w.destroy()
+        self.users_hint.config(text="当前登录：%s（%s）" % (
+            self.current_user(), ROLE_NAME[self.store.role_of(self.current_user())]))
+        for u in self.store.users:
+            role = u["role"]
+            bg = CARD_BG if role == ROLE_PARENT else WHITE
+            row = tk.Frame(self.users_list, bg=bg, height=52,
+                           highlightthickness=1, highlightbackground=BORDER)
+            row.pack(fill="x", pady=4)
+            row.pack_propagate(False)
+            person_icon(row, 0, 0, 8, ORANGE if role == ROLE_PARENT else BLUE,
+                        bg).pack(side="left", padx=(14, 10))
+            tk.Label(row, text=u["name"], bg=bg, fg=TITLE_DK,
+                     font=(FONT, 15, "bold")).pack(side="left")
+            tk.Label(row, text=ROLE_NAME[role], bg=bg, fg=ROLE_COLOR[role],
+                     font=(FONT, 12)).pack(side="left", padx=12)
+            if u["name"] == self.current_user():
+                tk.Label(row, text="当前登录", bg=bg, fg=TEXT_MUT,
+                         font=(FONT, 11)).pack(side="right", padx=(0, 12))
+            can, _msg = self.store.can_remove(u["name"])
+            if can:
+                make_button(row, "删除", None, WHITE, RED, None,
+                            lambda n=u["name"]: self.remove_user_dialog(n),
+                            66, 30, 12, 11, border=RED).pack(side="right", padx=10)
+            else:
+                tk.Label(row, text="不可删除", bg=bg, fg=TEXT_MUT,
+                         font=(FONT, 11)).pack(side="right", padx=(0, 12))
+        self._show("users")
+
+    def add_user_dialog(self):
+        if not self.is_parent():
+            return
+        name = AddUserDialog(self.root, self.store).show()
+        if name:
+            self.show_users()
+
+    def remove_user_dialog(self, name):
+        if not self.is_parent():
+            return
+        can, msg = self.store.can_remove(name)
+        if not can:
+            messagebox.showinfo(APP_TITLE, msg)
+            return
+        if not messagebox.askyesno(APP_TITLE,
+                                   "确定删除用户「%s」吗？\n其历史成绩也会一起删除。" % name):
+            return
+        ok, msg = self.store.remove_user(name)
+        if ok:
+            try:
+                os.remove(self.history_path(name))
+            except Exception:
+                pass
+        else:
+            messagebox.showinfo(APP_TITLE, msg)
+        self.show_users()
+
+    def change_pin_dialog(self):
+        if not self.is_parent():
+            return
+        if ChangePinDialog(self.root, self.store, self.current_user()).show():
+            messagebox.showinfo(APP_TITLE, "密码已修改")
+
 
 # ---------------------------------------------------------------------------
-# 五、自检
+# 七、自检
 # ---------------------------------------------------------------------------
 def _validate_round(qs, n):
-    """校验一轮题目是否满足全部规格，返回问题列表"""
     errs = []
     if len(qs) != n:
         errs.append("题量 %d != %d" % (len(qs), n))
@@ -896,7 +1712,6 @@ def _validate_round(qs, n):
 
 
 def run_selftest():
-    """自检：出题引擎 1 万题校验 + 交互逻辑测试（结果同时写入报告文件，便于验证打包后的 exe）"""
     report = []
 
     def out(s):
@@ -920,11 +1735,11 @@ def run_selftest():
         out("  %s  %s%s" % ("[PASS]" if ok else "[FAIL]", name,
                             ("  -> " + str(detail)) if detail and not ok else ""))
 
-    out("=" * 64)
-    out("口算小达人 自检")
-    out("=" * 64)
+    out("=" * 66)
+    out("口算小达人 v1.1 自检")
+    out("=" * 66)
 
-    # ---- 1. 出题引擎 1 万题校验 ----
+    # ---- 1. 出题引擎 ----
     out("\n[1] 出题引擎 1 万题校验")
     total, all_errs = 0, []
     for _ in range(50):
@@ -937,8 +1752,6 @@ def run_selftest():
         all_errs += _validate_round(qs, 20)
     check("生成 %d 题全部满足约束（无重复/范围/进退位混合/配比20:80）" % total,
           not all_errs, all_errs[:5])
-
-    # 加/减近似均衡抽查
     qs = []
     for _ in range(100):
         qs += generate_round(100)
@@ -949,142 +1762,134 @@ def run_selftest():
     out("\n[2] 交互与流程（模拟界面操作）")
     root = tk.Tk()
     root.withdraw()
-    app = App(root, selftest=True)
-    tmp_hist = os.path.join(tempfile.gettempdir(), "口算小达人-自检历史.txt")
-    if os.path.exists(tmp_hist):
-        os.remove(tmp_hist)
-    app.history_path = tmp_hist
+    tmp_dir = tempfile.mkdtemp(prefix="ksx_test_")
+    app = App(root, selftest=True, base_dir=tmp_dir)
+    check("无用户时自动进入首次运行向导", app.screen == "wizard", app.screen)
 
-    # 空答案：回车 / 下一题 → 不切题
-    app.start_practice()
-    i0 = app.round.index
-    app.entry.delete(0, "end")
-    app._on_enter_key()
-    check("空答案按回车 → 不切题且有提示",
-          app.round.index == i0 and app._hint_is_error)
-    app.submit_answer()
-    check("空答案点【下一题】→ 不切题", app.round.index == i0)
+    app.wp_name.insert(0, "王一")
+    app.wp_pin.insert(0, "1234")
+    app.wp_pin2.insert(0, "1234")
+    app.wizard_next()
+    app.wc_name.insert(0, "王二")
+    app.wizard_finish()
+    st = app.store
+    check("向导创建家长与孩子并切换到孩子",
+          st.names() == ["王一", "王二"] and st.role_of("王一") == ROLE_PARENT
+          and st.role_of("王二") == ROLE_CHILD and st.current == "王二",
+          (st.names(), st.current))
+    check("用户数据已落盘 users.json", os.path.exists(os.path.join(tmp_dir, USER_FILE)))
+    check("密码加盐哈希存储（非明文）",
+          st.find("王一")["pw"] not in ("1234", None)
+          and st.verify("王一", "1234") and not st.verify("王一", "9999"))
+    check("孩子切换免密码、家长需密码",
+          (not st.requires_pin("王二")) and st.requires_pin("王一"))
 
-    # 跳过 → 切题并记录
-    app.skip_question()
-    check("空答案点【跳过】→ 切题并记录为 skip",
-          app.round.index == i0 + 1 and app.round.records[-1]["status"] == "skip")
+    check("孩子登录时无删改权限", app.can_delete_records() is False)
+    app.switch_user("王一")
+    check("家长登录后有删改权限", app.can_delete_records() is True)
+    app.switch_user("王二")
 
-    # 有答案 → 切题并记录对错
-    q = app.round.questions[app.round.index]
-    app.entry.delete(0, "end")
-    app.entry.insert(0, str(q.answer))
-    app._on_enter_key()
-    check("正确作答按回车 → 切题并记录 right",
-          app.round.records[-1]["status"] == "right" and app.round.index == i0 + 2)
-
-    q = app.round.questions[app.round.index]
-    app.entry.delete(0, "end")
-    app.entry.insert(0, str(q.answer + 1))
-    app.submit_answer()
-    check("错误作答点【下一题】→ 切题并记录 wrong", app.round.records[-1]["status"] == "wrong")
-
-    # 输入过滤
-    app.entry.delete(0, "end")
-    app.entry.insert(0, "abc")
-    ok1 = app.entry.get() == ""
-    app.entry.insert(0, "1a2")
-    ok2 = app.entry.get() == ""
-    app.entry.insert(0, "1234")
-    ok3 = app.entry.get() == ""
-    app.entry.insert(0, "082")
-    ok4 = app.entry.get() == "082" and int(app.entry.get()) == 82
-    app.entry.delete(0, "end")
-    check("非数字/超长输入被拦截，前导零可正常判定", ok1 and ok2 and ok3 and ok4,
-          (ok1, ok2, ok3, ok4))
-
-    # 练习模式答完 20 题 → 出成绩 + 星星
+    # 练习一轮（王二）
     app.start_practice()
     for _ in range(20):
         q = app.round.questions[app.round.index]
         app.entry.delete(0, "end")
         app.entry.insert(0, str(q.answer))
         app.submit_answer()
-    d = app.result_data
-    check("练习模式答完 20 题 → 自动出成绩（20/20，三颗星）",
-          app.round.finished and d["total"] == 20 and d["right"] == 20 and d["stars"] == 3,
-          (d["total"], d["right"], d["stars"]))
+    check("练习成绩记入当前用户（王二 1 条 / 王一 0 条）",
+          len(app.read_history("王二")) == 1 and len(app.read_history("王一")) == 0)
 
-    # 历史写入与读取一致
-    recs = app.read_history()
-    check("成绩自动写入历史文件并可读回一致",
-          len(recs) == 1 and recs[0]["total"] == 20 and recs[0]["right"] == 20
-          and recs[0]["mode"] == "练习模式", recs)
-
-    # 测验模式：跳过计入错误 + 提前答完
-    app.start_test()
-    for i in range(100):
-        if i % 10 == 0:
-            app.skip_question()
-        else:
-            q = app.round.questions[app.round.index]
-            app.entry.delete(0, "end")
-            app.entry.insert(0, str(q.answer))
-            app.submit_answer()
-    d = app.result_data
-    check("测验模式提前答完 → 立即出成绩（100题，对90，跳过10计错）",
-          app.round.finished and d["total"] == 100 and d["right"] == 90
-          and len(d["wrong"]) == 10 and not d["timed_out"],
-          (d["total"], d["right"], len(d["wrong"])))
-
-    # 错题列表内容
-    app.show_wrong_list()
-    check("错题列表行数与错题数一致（10 行）", app.wrong_rows_count == 10,
-          app.wrong_rows_count)
-
-    # 错题重练 → 循环至全对；且不计入历史
-    before = len(app.read_history())
-    app.start_review()
-    check("错题重练用当前错题本组卷（10 题）", len(app.round.questions) == 10,
-          len(app.round.questions))
-    for _ in range(10):
+    app.switch_user("王一")
+    app.start_practice()
+    for _ in range(20):
         q = app.round.questions[app.round.index]
         app.entry.delete(0, "end")
         app.entry.insert(0, str(q.answer))
         app.submit_answer()
+    check("不同用户历史互相隔离",
+          len(app.read_history("王一")) == 1 and len(app.read_history("王二")) == 1)
+
+    # 权限界面差异
+    app.switch_user("王二")
+    app.show_history()
+    child_texts = widget_texts(app.screens["history"])
+    check("孩子历史页不含删除/清空按钮",
+          not any(("清空记录" in t) or (t == "删") for t in child_texts),
+          [t for t in child_texts if "删" in t or "清空" in t])
+    app.switch_user("王一")
+    app.show_history("王二")
+    parent_texts = widget_texts(app.screens["history"])
+    check("家长历史页含删除与清空按钮",
+          any(t == "删" for t in parent_texts) and any(t == "清空记录" for t in parent_texts))
+
+    # 删除单条 / 清空（记录由孩子产生，再切到家长删除）
+    app.switch_user("王二")
+    for _ in range(2):
+        app.start_practice()
+        for _ in range(20):
+            q = app.round.questions[app.round.index]
+            app.entry.delete(0, "end")
+            app.entry.insert(0, str(q.answer))
+            app.submit_answer()
+    recs = app.read_history("王二")
+    check("王二累计 3 条记录", len(recs) == 3, len(recs))
+    app.switch_user("王一")
+    app.delete_history_record("王二", recs[0]["line_no"])
+    check("家长删除单条后文件同步减少一行", len(app.read_history("王二")) == 2)
+    check("家长清空记录后仅剩表头", app.clear_history("王二")
+          and len(app.read_history("王二")) == 0)
+
+    # 中断保存
+    app.switch_user("王二")
+    app.start_practice()
+    for i in range(3):
+        q = app.round.questions[app.round.index]
+        app.entry.delete(0, "end")
+        app.entry.insert(0, str(q.answer if i < 2 else q.answer + 1))
+        app.submit_answer()
+    app.save_partial_and_exit()
     d = app.result_data
-    after = len(app.read_history())
-    check("错题重练全部答对 → 错题本清空且不写入历史",
-          d["right"] == 10 and len(d["wrong"]) == 0 and after == before,
-          (d["right"], len(d["wrong"]), before, after))
+    check("中断保存：按已答题数计（3 题对 2 题 → 67%）",
+          d["partial"] and d["total"] == 3 and d["right"] == 2
+          and round(d["acc"] * 100) == 67, (d["total"], d["right"], d["acc"]))
+    last = open(app.history_path("王二"), encoding="utf-8").read().strip().split("\n")[-1]
+    check("历史记录标记「中途退出」且记 2/3", "中途退出" in last and "2/3" in last, last)
 
-    # 测验倒计时归零 → 锁定并自动交卷
-    app.start_test()
-    app.round.start_ts = time.time() - (TEST_TIME_LIMIT + 5)
-    app.tick_timer()
-    locked = app.round.locked and app.round.timed_out
-    app.finish_round(timed_out=True)
-    d = app.result_data
-    check("倒计时归零 → 锁定界面、自动交卷、未答题计错",
-          locked and app.round.finished and d["timed_out"] and d["total"] == 100
-          and d["right"] == 0 and len(d["wrong"]) == 100,
-          (locked, d["right"], len(d["wrong"])))
+    # 用户管理
+    ok, msg = st.add_user("王三", ROLE_CHILD)
+    check("添加孩子用户成功", ok and "王三" in st.names(), msg)
+    check("重名被拒绝", not st.add_user("王三", ROLE_CHILD)[0])
+    check("家长密码格式校验（4-6 位数字）",
+          not st.add_user("王四", ROLE_PARENT, "12")[0]
+          and not st.add_user("王四", ROLE_PARENT, "abcd")[0])
+    check("不能删除当前登录用户", not st.can_remove(st.current)[0], st.current)
+    st.set_current("王一")
+    check("不能删除最后一名家长", not st.can_remove("王一")[0])
+    check("可以删除其他用户", st.can_remove("王三")[0])
+    ok, msg = st.remove_user("王三")
+    check("删除用户成功", ok and "王三" not in st.names(), msg)
+    check("修改密码后旧密码失效、新密码生效",
+          st.set_pin("王一", "5678")[0] and not st.verify("王一", "1234")
+          and st.verify("王一", "5678"))
 
-    # 星星分档
-    check("星星分档：100%→3星、80%→2星、50%→1星",
-          compute_stars(1.0) == 3 and compute_stars(0.8) == 2 and compute_stars(0.5) == 1)
-
-    # 时间到记录标记
-    recs = app.read_history()
-    check("时间到成绩在历史中带“时间到”标记",
-          any(r.get("timed_out") for r in recs), recs[-1] if recs else None)
+    # 旧数据迁移
+    tmp2 = tempfile.mkdtemp(prefix="ksx_legacy_")
+    legacy = os.path.join(tmp2, LEGACY_HISTORY)
+    with open(legacy, "w", encoding="utf-8") as fp:
+        fp.write("旧记录\n")
+    app2 = App(root, selftest=True, base_dir=tmp2)
+    check("v1.1 首次启动清空 v1.0 旧历史文件并进入向导",
+          (not os.path.exists(legacy)) and app2.screen == "wizard")
 
     root.destroy()
 
     passed = sum(1 for _, ok in results if ok)
-    out("\n" + "=" * 64)
+    out("\n" + "=" * 66)
     out("自检结果：%d / %d 通过" % (passed, len(results)))
-    out("=" * 64)
-
-    # 报告写入文件（打包成 exe 后无控制台，可据此查看结果）
+    out("=" * 66)
     try:
-        report_path = os.path.join(tempfile.gettempdir(), "口算小达人-自检报告.txt")
-        with open(report_path, "w", encoding="utf-8") as fp:
+        rp = os.path.join(tempfile.gettempdir(), "口算小达人-自检报告.txt")
+        with open(rp, "w", encoding="utf-8") as fp:
             fp.write("\n".join(report) + "\n")
     except Exception:
         pass
@@ -1096,7 +1901,6 @@ def main():
     if "--selftest" in sys.argv:
         sys.exit(run_selftest())
 
-    # Windows 高 DPI 感知
     try:
         from ctypes import windll
         windll.shcore.SetProcessDpiAwareness(1)

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 680 400" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>v1.1 界面设计：主菜单用户条、切换用户、家长密码框</title>
+  <desc>主菜单顶部新增当前用户条与切换按钮；切换面板区分孩子一键切换与家长密码；家长密码框含找回提示</desc>
+  <rect x="0.5" y="0.5" width="199" height="349" rx="10" fill="#FFFFFF" stroke="#B4B2A9"/>
+  <path d="M10,1 H190 A9,9 0 0 1 199,10 V30 H1 V10 A9,9 0 0 1 10,1 Z" fill="#F1EFE8"/>
+  <text x="100" y="20" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">口算小达人</text>
+  <path d="M190,12 L196,18 M196,12 L190,18" stroke="#888780" stroke-width="1.2"/>
+  <rect x="12" y="36" width="176" height="30" rx="8" fill="#E6F1FB"/>
+  <circle cx="30" cy="47" r="5" fill="#378ADD"/>
+  <path d="M22,62 A8,8 0 0 1 38,62 Z" fill="#378ADD"/>
+  <text x="44" y="55" font-size="11" fill="#444441" font-family="sans-serif">当前：王二（学生）</text>
+  <rect x="146" y="41" width="36" height="20" rx="5" fill="#FFFFFF" stroke="#B4B2A9"/>
+  <text x="164" y="55" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">切换</text>
+  <text x="100" y="98" text-anchor="middle" font-size="17" font-weight="500" fill="#26215C" font-family="sans-serif">100以内加减法</text>
+  <text x="100" y="118" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">小学二年级口算练习</text>
+  <rect x="22" y="136" width="156" height="50" rx="10" fill="#378ADD"/>
+  <text x="100" y="159" text-anchor="middle" font-size="15" font-weight="500" fill="#FFFFFF" font-family="sans-serif">练习模式</text>
+  <text x="100" y="176" text-anchor="middle" font-size="11" fill="#E6F1FB" font-family="sans-serif">20道题 · 不限时间</text>
+  <rect x="22" y="196" width="156" height="50" rx="10" fill="#EF9F27"/>
+  <text x="100" y="219" text-anchor="middle" font-size="15" font-weight="500" fill="#FFFFFF" font-family="sans-serif">测验模式</text>
+  <text x="100" y="236" text-anchor="middle" font-size="11" fill="#FAEEDA" font-family="sans-serif">100道题 · 限时20分钟</text>
+  <rect x="45" y="258" width="110" height="28" rx="8" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="100" y="276" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">历史成绩</text>
+  <text x="100" y="318" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">选一个开始吧！</text>
+  <rect x="240.5" y="0.5" width="199" height="349" rx="10" fill="#FFFFFF" stroke="#B4B2A9"/>
+  <path d="M250,1 H430 A9,9 0 0 1 439,10 V30 H241 V10 A9,9 0 0 1 250,1 Z" fill="#F1EFE8"/>
+  <text x="340" y="20" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">切换用户</text>
+  <path d="M430,12 L436,18 M436,12 L430,18" stroke="#888780" stroke-width="1.2"/>
+  <rect x="252" y="50" width="176" height="44" rx="8" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <circle cx="272" cy="66" r="5" fill="#EF9F27"/>
+  <path d="M264,81 A8,8 0 0 1 280,81 Z" fill="#EF9F27"/>
+  <text x="288" y="72" font-size="14" font-weight="500" fill="#26215C" font-family="sans-serif">王一</text>
+  <text x="418" y="72" text-anchor="end" font-size="11" fill="#854F0B" font-family="sans-serif">家长 · 需密码</text>
+  <rect x="252" y="104" width="176" height="44" rx="8" fill="#FFFFFF" stroke="#378ADD" stroke-width="1.5"/>
+  <circle cx="272" cy="120" r="5" fill="#378ADD"/>
+  <path d="M264,135 A8,8 0 0 1 280,135 Z" fill="#378ADD"/>
+  <text x="288" y="126" font-size="14" font-weight="500" fill="#26215C" font-family="sans-serif">王二</text>
+  <text x="418" y="126" text-anchor="end" font-size="11" fill="#3B6D11" font-family="sans-serif">学生 · 一键切换</text>
+  <rect x="252" y="158" width="176" height="44" rx="8" fill="#FFFFFF" stroke="#B4B2A9"/>
+  <circle cx="272" cy="174" r="5" fill="#378ADD"/>
+  <path d="M264,189 A8,8 0 0 1 288,189 Z" fill="#378ADD" transform="translate(-8,0)"/>
+  <text x="288" y="180" font-size="14" font-weight="500" fill="#26215C" font-family="sans-serif">王三</text>
+  <text x="418" y="180" text-anchor="end" font-size="11" fill="#3B6D11" font-family="sans-serif">学生 · 一键切换</text>
+  <text x="340" y="232" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">点孩子直接切换，家长需输入密码</text>
+  <rect x="270" y="252" width="140" height="32" rx="8" fill="#FFFFFF" stroke="#B4B2A9"/>
+  <text x="340" y="272" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">添加用户（需家长）</text>
+  <rect x="300" y="296" width="80" height="30" rx="8" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="340" y="315" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">取消</text>
+  <rect x="480.5" y="0.5" width="199" height="349" rx="10" fill="#FFFFFF" stroke="#B4B2A9"/>
+  <path d="M490,1 H670 A9,9 0 0 1 679,10 V30 H481 V10 A9,9 0 0 1 490,1 Z" fill="#F1EFE8"/>
+  <text x="580" y="20" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">家长验证</text>
+  <path d="M670,12 L676,18 M676,12 L670,18" stroke="#888780" stroke-width="1.2"/>
+  <text x="580" y="82" text-anchor="middle" font-size="12" fill="#444441" font-family="sans-serif">请输入家长「王一」的密码</text>
+  <rect x="520" y="102" width="120" height="38" rx="8" fill="#FFFFFF" stroke="#378ADD" stroke-width="2"/>
+  <text x="580" y="129" text-anchor="middle" font-size="16" fill="#26215C" font-family="sans-serif">● ● ●</text>
+  <text x="580" y="164" text-anchor="middle" font-size="11" fill="#A32D2D" font-family="sans-serif">密码错误，请重试</text>
+  <rect x="505" y="186" width="80" height="34" rx="8" fill="#378ADD"/>
+  <text x="545" y="208" text-anchor="middle" font-size="13" font-weight="500" fill="#FFFFFF" font-family="sans-serif">确认</text>
+  <rect x="595" y="186" width="80" height="34" rx="8" fill="#FFFFFF" stroke="#B4B2A9"/>
+  <text x="635" y="208" text-anchor="middle" font-size="13" fill="#444441" font-family="sans-serif">取消</text>
+  <text x="580" y="252" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">忘记密码怎么办？</text>
+  <text x="580" y="270" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">删除软件旁的用户配置文件即可重置</text>
+  <text x="100" y="378" text-anchor="middle" font-size="13" fill="#B4B2A9" font-family="sans-serif">① 主菜单（新增用户条）</text>
+  <text x="340" y="378" text-anchor="middle" font-size="13" fill="#B4B2A9" font-family="sans-serif">② 切换用户</text>
+  <text x="580" y="378" text-anchor="middle" font-size="13" fill="#B4B2A9" font-family="sans-serif">③ 家长密码框</text>
+</svg>
