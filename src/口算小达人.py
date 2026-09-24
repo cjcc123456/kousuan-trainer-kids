@@ -738,7 +738,9 @@ class App:
         if rs.timed_out:
             line += " | 时间到"
         try:
-            new_file = not os.path.exists(self.history_path)
+            # 空文件（可能是启动时探测写权限创建的）也视为新文件，需写表头
+            new_file = (not os.path.exists(self.history_path)
+                        or os.path.getsize(self.history_path) == 0)
             with open(self.history_path, "a", encoding="utf-8") as fp:
                 if new_file:
                     fp.write("口算小达人 历史成绩记录（每次答题一行）\n")
