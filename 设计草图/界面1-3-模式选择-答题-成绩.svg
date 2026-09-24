@@ -14,10 +14,12 @@
   <rect x="22" y="188" width="156" height="54" rx="10" fill="#EF9F27"/>
   <text x="100" y="213" text-anchor="middle" font-size="15" font-weight="500" fill="#FFFFFF" font-family="sans-serif">测验模式</text>
   <text x="100" y="231" text-anchor="middle" font-size="11" fill="#FAEEDA" font-family="sans-serif">100道题 · 限时20分钟</text>
-  <circle cx="88" cy="282" r="4" fill="#378ADD"/>
-  <circle cx="100" cy="282" r="4" fill="#639922"/>
-  <circle cx="112" cy="282" r="4" fill="#EF9F27"/>
-  <text x="100" y="315" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">选一个开始吧！（另有"历史成绩"按钮）</text>
+  <rect x="45" y="255" width="110" height="30" rx="8" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="100" y="274" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">历史成绩</text>
+  <circle cx="88" cy="302" r="4" fill="#378ADD"/>
+  <circle cx="100" cy="302" r="4" fill="#639922"/>
+  <circle cx="112" cy="302" r="4" fill="#EF9F27"/>
+  <text x="100" y="328" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">选一个开始吧！</text>
   <rect x="240.5" y="0.5" width="199" height="349" rx="10" fill="#FFFFFF" stroke="#B4B2A9"/>
   <path d="M250,1 H430 A9,9 0 0 1 439,10 V30 H241 V10 A9,9 0 0 1 250,1 Z" fill="#F1EFE8"/>
   <text x="340" y="20" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">答题中</text>
@@ -28,6 +30,7 @@
   <text x="417" y="54" text-anchor="end" font-size="11" font-weight="500" fill="#444441" font-family="sans-serif">05:23</text>
   <rect x="252" y="62" width="176" height="6" rx="3" fill="#F1EFE8"/>
   <rect x="252" y="62" width="26" height="6" rx="3" fill="#378ADD"/>
+  <rect x="248" y="132" width="184" height="72" rx="10" fill="#F1EFE8"/>
   <text x="252" y="172" font-size="22" font-weight="500" fill="#26215C" font-family="sans-serif">47 + 35 =</text>
   <rect x="352" y="144" width="68" height="42" rx="8" fill="#FFFFFF" stroke="#378ADD" stroke-width="2"/>
   <text x="375" y="172" text-anchor="middle" font-size="17" font-weight="500" fill="#26215C" font-family="sans-serif">82</text>
@@ -54,6 +57,7 @@
   <text x="538" y="276" text-anchor="middle" font-size="13" font-weight="500" fill="#FFFFFF" font-family="sans-serif">再来一轮</text>
   <rect x="588" y="253" width="84" height="36" rx="8" fill="#FFFFFF" stroke="#B4B2A9"/>
   <text x="630" y="276" text-anchor="middle" font-size="13" fill="#444441" font-family="sans-serif">返回菜单</text>
+  <text x="580" y="312" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">正确率越高 星星越多</text>
   <text x="100" y="378" text-anchor="middle" font-size="13" fill="#B4B2A9" font-family="sans-serif">① 模式选择</text>
   <text x="340" y="378" text-anchor="middle" font-size="13" fill="#B4B2A9" font-family="sans-serif">② 答题界面</text>
   <text x="580" y="378" text-anchor="middle" font-size="13" fill="#B4B2A9" font-family="sans-serif">③ 成绩结果</text>

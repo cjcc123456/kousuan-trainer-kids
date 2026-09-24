@@ -17,10 +17,25 @@
 - 成品：双击 `口算小达人.exe`（无需安装任何环境）
 - 源码：`python src/口算小达人.py`（Python 3.10+，仅使用标准库 tkinter）
 
+## 自检
+
+```bash
+python src/口算小达人.py --selftest
+```
+
+自动校验出题引擎（1 万题约束校验）与全部交互逻辑（空答案拦截、跳过计分、倒计时交卷、错题重练、历史记录等），
+结果同时写入临时目录的 `口算小达人-自检报告.txt`。
+
 ## 打包
 
 ```bash
-pyinstaller --onefile --windowed src/口算小达人.py
+pyinstaller --onefile --windowed --icon assets/icon.ico --name 口算小达人 src/口算小达人.py
+```
+
+图标由 `tools/make_icon.py` 生成（纯标准库绘制，无需 Pillow）：
+
+```bash
+python tools/make_icon.py
 ```
 
 ## 文档
