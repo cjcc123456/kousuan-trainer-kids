@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# PyInstaller 打包中间产物
+build/
+dist/
+*.spec
+
+# 打包成品与个人数据不上传仓库
+口算小达人.exe
+口算小达人-历史成绩.txt
+
+# 系统文件
+Thumbs.db
+.DS_Store

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 680 400" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>界面设计示意图：错题回顾与历史成绩</title>
+  <desc>左边是错题回顾页，列出做错和跳过的题目及正确答案，带错题重练按钮；右边是历史成绩页，按时间列出每次成绩</desc>
+  <rect x="30.5" y="20.5" width="299" height="319" rx="10" fill="#FFFFFF" stroke="#B4B2A9"/>
+  <path d="M40,21 H320 A9,9 0 0 1 329,30 V50 H31 V30 A9,9 0 0 1 40,21 Z" fill="#F1EFE8"/>
+  <text x="180" y="40" text-anchor="middle" font-size="13" fill="#444441" font-family="sans-serif">看看错题</text>
+  <path d="M318,32 L324,38 M324,32 L318,38" stroke="#888780" stroke-width="1.2"/>
+  <text x="180" y="78" text-anchor="middle" font-size="12" font-weight="500" fill="#444441" font-family="sans-serif">共 5 道错题（答错 4 · 跳过 1）</text>
+  <text x="75" y="105" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">题目</text>
+  <text x="170" y="105" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">你的答案</text>
+  <text x="255" y="105" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">正确答案</text>
+  <line x1="50" y1="112" x2="310" y2="112" stroke="#F1EFE8" stroke-width="1.5"/>
+  <text x="75" y="138" text-anchor="middle" font-size="13" fill="#26215C" font-family="sans-serif">47 + 35</text>
+  <text x="162" y="138" text-anchor="middle" font-size="13" fill="#A32D2D" font-family="sans-serif">72</text>
+  <path d="M178,132 L182,136 M182,132 L178,136" stroke="#A32D2D" stroke-width="1.3"/>
+  <text x="247" y="138" text-anchor="middle" font-size="13" font-weight="500" fill="#3B6D11" font-family="sans-serif">82</text>
+  <path d="M262,135 L265,138 L270,131" stroke="#3B6D11" stroke-width="1.3" fill="none"/>
+  <text x="75" y="168" text-anchor="middle" font-size="13" fill="#26215C" font-family="sans-serif">62 - 28</text>
+  <text x="170" y="168" text-anchor="middle" font-size="12" fill="#888780" font-family="sans-serif">跳过</text>
+  <text x="247" y="168" text-anchor="middle" font-size="13" font-weight="500" fill="#3B6D11" font-family="sans-serif">34</text>
+  <path d="M262,165 L265,168 L270,161" stroke="#3B6D11" stroke-width="1.3" fill="none"/>
+  <text x="75" y="198" text-anchor="middle" font-size="13" fill="#26215C" font-family="sans-serif">80 - 36</text>
+  <text x="162" y="198" text-anchor="middle" font-size="13" fill="#A32D2D" font-family="sans-serif">54</text>
+  <path d="M178,192 L182,196 M182,192 L178,196" stroke="#A32D2D" stroke-width="1.3"/>
+  <text x="247" y="198" text-anchor="middle" font-size="13" font-weight="500" fill="#3B6D11" font-family="sans-serif">44</text>
+  <path d="M262,195 L265,198 L270,191" stroke="#3B6D11" stroke-width="1.3" fill="none"/>
+  <text x="75" y="228" text-anchor="middle" font-size="13" fill="#26215C" font-family="sans-serif">16 + 68</text>
+  <text x="162" y="228" text-anchor="middle" font-size="13" fill="#A32D2D" font-family="sans-serif">75</text>
+  <path d="M178,222 L182,226 M182,222 L178,226" stroke="#A32D2D" stroke-width="1.3"/>
+  <text x="247" y="228" text-anchor="middle" font-size="13" font-weight="500" fill="#3B6D11" font-family="sans-serif">84</text>
+  <path d="M262,225 L265,228 L270,221" stroke="#3B6D11" stroke-width="1.3" fill="none"/>
+  <text x="180" y="253" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">……</text>
+  <rect x="50" y="268" width="130" height="36" rx="8" fill="#EF9F27"/>
+  <text x="115" y="291" text-anchor="middle" font-size="13" font-weight="500" fill="#FFFFFF" font-family="sans-serif">错题重练</text>
+  <rect x="195" y="268" width="85" height="36" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="1"/>
+  <text x="237" y="291" text-anchor="middle" font-size="13" fill="#444441" font-family="sans-serif">返回</text>
+  <text x="180" y="365" text-anchor="middle" font-size="13" fill="#B4B2A9" font-family="sans-serif">④ 错题回顾（新增）</text>
+  <rect x="380.5" y="20.5" width="299" height="319" rx="10" fill="#FFFFFF" stroke="#B4B2A9"/>
+  <path d="M390,21 H670 A9,9 0 0 1 679,30 V50 H381 V30 A9,9 0 0 1 390,21 Z" fill="#F1EFE8"/>
+  <text x="530" y="40" text-anchor="middle" font-size="13" fill="#444441" font-family="sans-serif">历史成绩</text>
+  <path d="M668,32 L674,38 M674,32 L668,38" stroke="#888780" stroke-width="1.2"/>
+  <text x="400" y="80" font-size="11" fill="#888780" font-family="sans-serif">日期</text>
+  <text x="480" y="80" font-size="11" fill="#888780" font-family="sans-serif">模式</text>
+  <text x="528" y="80" font-size="11" fill="#888780" font-family="sans-serif">成绩</text>
+  <text x="582" y="80" font-size="11" fill="#888780" font-family="sans-serif">用时</text>
+  <line x1="392" y1="88" x2="668" y2="88" stroke="#F1EFE8" stroke-width="1.5"/>
+  <rect x="392" y="92" width="276" height="22" fill="#F1EFE8"/>
+  <text x="400" y="108" font-size="12" fill="#444441" font-family="sans-serif">9月24日 20:15</text>
+  <text x="480" y="108" font-size="12" fill="#378ADD" font-family="sans-serif">练习</text>
+  <text x="528" y="108" font-size="12" fill="#444441" font-family="sans-serif">18/20</text>
+  <text x="582" y="108" font-size="12" fill="#444441" font-family="sans-serif">6分23秒</text>
+  <text x="400" y="138" font-size="12" fill="#444441" font-family="sans-serif">9月24日 19:40</text>
+  <text x="480" y="138" font-size="12" fill="#854F0B" font-family="sans-serif">测验</text>
+  <text x="528" y="138" font-size="12" fill="#444441" font-family="sans-serif">76/100</text>
+  <text x="582" y="138" font-size="12" fill="#444441" font-family="sans-serif">18分40秒</text>
+  <rect x="392" y="142" width="276" height="22" fill="#F1EFE8"/>
+  <text x="400" y="158" font-size="12" fill="#444441" font-family="sans-serif">9月23日 20:02</text>
+  <text x="480" y="158" font-size="12" fill="#378ADD" font-family="sans-serif">练习</text>
+  <text x="528" y="158" font-size="12" fill="#3B6D11" font-family="sans-serif">20/20</text>
+  <text x="582" y="158" font-size="12" fill="#444441" font-family="sans-serif">5分02秒</text>
+  <text x="400" y="188" font-size="12" fill="#444441" font-family="sans-serif">9月23日 19:30</text>
+  <text x="480" y="188" font-size="12" fill="#378ADD" font-family="sans-serif">练习</text>
+  <text x="528" y="188" font-size="12" fill="#444441" font-family="sans-serif">15/20</text>
+  <text x="582" y="188" font-size="12" fill="#444441" font-family="sans-serif">7分10秒</text>
+  <rect x="392" y="192" width="276" height="22" fill="#F1EFE8"/>
+  <text x="400" y="208" font-size="12" fill="#444441" font-family="sans-serif">9月22日 19:15</text>
+  <text x="480" y="208" font-size="12" fill="#854F0B" font-family="sans-serif">测验</text>
+  <text x="528" y="208" font-size="12" fill="#444441" font-family="sans-serif">65/100</text>
+  <text x="582" y="208" font-size="12" fill="#A32D2D" font-family="sans-serif">20分00秒</text>
+  <text x="530" y="245" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">软件内显示最近 50 次</text>
+  <text x="530" y="265" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">完整记录同时保存在软件旁的 txt 文件里</text>
+  <rect x="480" y="283" width="100" height="36" rx="8" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="1"/>
+  <text x="530" y="306" text-anchor="middle" font-size="13" fill="#444441" font-family="sans-serif">返回菜单</text>
+  <text x="530" y="365" text-anchor="middle" font-size="13" fill="#B4B2A9" font-family="sans-serif">⑤ 历史成绩（新增）</text>
+</svg>

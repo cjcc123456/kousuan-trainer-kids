@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 680 400" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>界面设计示意图：模式选择、答题、成绩</title>
+  <desc>主菜单、答题界面、成绩结果三个界面的设计草图</desc>
+  <rect x="0.5" y="0.5" width="199" height="349" rx="10" fill="#FFFFFF" stroke="#B4B2A9"/>
+  <path d="M10,1 H190 A9,9 0 0 1 199,10 V30 H1 V10 A9,9 0 0 1 10,1 Z" fill="#F1EFE8"/>
+  <text x="100" y="20" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">口算小达人</text>
+  <path d="M190,12 L196,18 M196,12 L190,18" stroke="#888780" stroke-width="1.2"/>
+  <text x="100" y="76" text-anchor="middle" font-size="17" font-weight="500" fill="#26215C" font-family="sans-serif">100以内加减法</text>
+  <text x="100" y="97" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">小学二年级口算练习</text>
+  <rect x="22" y="120" width="156" height="54" rx="10" fill="#378ADD"/>
+  <text x="100" y="145" text-anchor="middle" font-size="15" font-weight="500" fill="#FFFFFF" font-family="sans-serif">练习模式</text>
+  <text x="100" y="163" text-anchor="middle" font-size="11" fill="#E6F1FB" font-family="sans-serif">20道题 · 不限时间</text>
+  <rect x="22" y="188" width="156" height="54" rx="10" fill="#EF9F27"/>
+  <text x="100" y="213" text-anchor="middle" font-size="15" font-weight="500" fill="#FFFFFF" font-family="sans-serif">测验模式</text>
+  <text x="100" y="231" text-anchor="middle" font-size="11" fill="#FAEEDA" font-family="sans-serif">100道题 · 限时20分钟</text>
+  <circle cx="88" cy="282" r="4" fill="#378ADD"/>
+  <circle cx="100" cy="282" r="4" fill="#639922"/>
+  <circle cx="112" cy="282" r="4" fill="#EF9F27"/>
+  <text x="100" y="315" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">选一个开始吧！（另有"历史成绩"按钮）</text>
+  <rect x="240.5" y="0.5" width="199" height="349" rx="10" fill="#FFFFFF" stroke="#B4B2A9"/>
+  <path d="M250,1 H430 A9,9 0 0 1 439,10 V30 H241 V10 A9,9 0 0 1 250,1 Z" fill="#F1EFE8"/>
+  <text x="340" y="20" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">答题中</text>
+  <path d="M430,12 L436,18 M436,12 L430,18" stroke="#888780" stroke-width="1.2"/>
+  <text x="252" y="54" font-size="11" font-weight="500" fill="#444441" font-family="sans-serif">第 3 题 / 共 20 题</text>
+  <circle cx="425" cy="50" r="5" stroke="#444441" fill="none" stroke-width="1.2"/>
+  <path d="M425,50 L425,46 M425,50 L428,51" stroke="#444441" stroke-width="1.2"/>
+  <text x="417" y="54" text-anchor="end" font-size="11" font-weight="500" fill="#444441" font-family="sans-serif">05:23</text>
+  <rect x="252" y="62" width="176" height="6" rx="3" fill="#F1EFE8"/>
+  <rect x="252" y="62" width="26" height="6" rx="3" fill="#378ADD"/>
+  <text x="252" y="172" font-size="22" font-weight="500" fill="#26215C" font-family="sans-serif">47 + 35 =</text>
+  <rect x="352" y="144" width="68" height="42" rx="8" fill="#FFFFFF" stroke="#378ADD" stroke-width="2"/>
+  <text x="375" y="172" text-anchor="middle" font-size="17" font-weight="500" fill="#26215C" font-family="sans-serif">82</text>
+  <path d="M392,152 L392,178" stroke="#378ADD" stroke-width="2"/>
+  <text x="340" y="225" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">按回车键进入下一题</text>
+  <rect x="250" y="248" width="94" height="38" rx="8" fill="#639922"/>
+  <text x="297" y="272" text-anchor="middle" font-size="13" font-weight="500" fill="#FFFFFF" font-family="sans-serif">下一题</text>
+  <rect x="354" y="248" width="74" height="38" rx="8" fill="#FFFFFF" stroke="#993C1D" stroke-width="1.5"/>
+  <text x="391" y="272" text-anchor="middle" font-size="13" font-weight="500" fill="#993C1D" font-family="sans-serif">跳过</text>
+  <text x="340" y="318" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">答案为空时只能点【跳过】</text>
+  <rect x="480.5" y="0.5" width="199" height="349" rx="10" fill="#FFFFFF" stroke="#B4B2A9"/>
+  <path d="M490,1 H670 A9,9 0 0 1 679,10 V30 H481 V10 A9,9 0 0 1 490,1 Z" fill="#F1EFE8"/>
+  <text x="580" y="20" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">成绩</text>
+  <path d="M670,12 L676,18 M676,12 L670,18" stroke="#888780" stroke-width="1.2"/>
+  <text x="580" y="75" text-anchor="middle" font-size="19" font-weight="500" fill="#26215C" font-family="sans-serif">做完啦！</text>
+  <path d="M0,-11 L3.2,-3.6 L11,-3.4 L5.2,1.6 L7,9 L0,4.7 L-7,9 L-5.2,1.6 L-11,-3.4 L-3.2,-3.6 Z" transform="translate(551,100) scale(0.85)" fill="#FAC775"/>
+  <path d="M0,-11 L3.2,-3.6 L11,-3.4 L5.2,1.6 L7,9 L0,4.7 L-7,9 L-5.2,1.6 L-11,-3.4 L-3.2,-3.6 Z" transform="translate(580,98) scale(1.05)" fill="#EF9F27"/>
+  <path d="M0,-11 L3.2,-3.6 L11,-3.4 L5.2,1.6 L7,9 L0,4.7 L-7,9 L-5.2,1.6 L-11,-3.4 L-3.2,-3.6 Z" transform="translate(609,100) scale(0.85)" fill="#FAC775"/>
+  <text x="580" y="152" text-anchor="middle" font-size="25" font-weight="500" fill="#26215C" font-family="sans-serif">18 / 20</text>
+  <text x="580" y="180" text-anchor="middle" font-size="13" font-weight="500" fill="#3B6D11" font-family="sans-serif">答对 18 题</text>
+  <text x="580" y="204" text-anchor="middle" font-size="12" fill="#444441" font-family="sans-serif">正确率 90%</text>
+  <text x="580" y="223" text-anchor="middle" font-size="12" fill="#444441" font-family="sans-serif">用时 6分23秒</text>
+  <rect x="496" y="253" width="84" height="36" rx="8" fill="#378ADD"/>
+  <text x="538" y="276" text-anchor="middle" font-size="13" font-weight="500" fill="#FFFFFF" font-family="sans-serif">再来一轮</text>
+  <rect x="588" y="253" width="84" height="36" rx="8" fill="#FFFFFF" stroke="#B4B2A9"/>
+  <text x="630" y="276" text-anchor="middle" font-size="13" fill="#444441" font-family="sans-serif">返回菜单</text>
+  <text x="100" y="378" text-anchor="middle" font-size="13" fill="#B4B2A9" font-family="sans-serif">① 模式选择</text>
+  <text x="340" y="378" text-anchor="middle" font-size="13" fill="#B4B2A9" font-family="sans-serif">② 答题界面</text>
+  <text x="580" y="378" text-anchor="middle" font-size="13" fill="#B4B2A9" font-family="sans-serif">③ 成绩结果</text>
+</svg>
