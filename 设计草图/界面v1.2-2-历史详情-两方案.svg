@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 680 400" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>v1.2 界面设计：历史详情弹窗的两个方案</title>
+  <desc>左：方案B 仅汇总统计；右：方案A 汇总 + 错题列表 + 重练本次错题按钮</desc>
+  <rect x="15.5" y="0.5" width="319" height="349" rx="10" fill="#FFFFFF" stroke="#B4B2A9"/>
+  <path d="M25,1 H325 A9,9 0 0 1 334,10 V30 H16 V10 A9,9 0 0 1 25,1 Z" fill="#F1EFE8"/>
+  <text x="175" y="20" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">成绩详情</text>
+  <path d="M325,12 L331,18 M331,12 L325,18" stroke="#888780" stroke-width="1.2"/>
+  <text x="55" y="58" font-size="12" fill="#888780" font-family="sans-serif">时间</text>
+  <text x="135" y="58" font-size="12" fill="#444441" font-family="sans-serif">2026-09-25 18:00:03</text>
+  <text x="55" y="82" font-size="12" fill="#888780" font-family="sans-serif">模式</text>
+  <text x="135" y="82" font-size="12" fill="#444441" font-family="sans-serif">练习模式（共 20 题）</text>
+  <text x="55" y="106" font-size="12" fill="#888780" font-family="sans-serif">得分</text>
+  <text x="135" y="106" font-size="12" font-weight="500" fill="#26215C" font-family="sans-serif">75 分 / 满分 100</text>
+  <text x="55" y="130" font-size="12" fill="#888780" font-family="sans-serif">答对</text>
+  <text x="135" y="130" font-size="12" fill="#444441" font-family="sans-serif">15 题</text>
+  <text x="55" y="154" font-size="12" fill="#888780" font-family="sans-serif">作答</text>
+  <text x="135" y="154" font-size="12" fill="#444441" font-family="sans-serif">18 题</text>
+  <text x="55" y="178" font-size="12" fill="#888780" font-family="sans-serif">跳过</text>
+  <text x="135" y="178" font-size="12" fill="#444441" font-family="sans-serif">2 题</text>
+  <text x="55" y="202" font-size="12" fill="#888780" font-family="sans-serif">未答</text>
+  <text x="135" y="202" font-size="12" fill="#444441" font-family="sans-serif">0 题</text>
+  <text x="55" y="226" font-size="12" fill="#888780" font-family="sans-serif">正确率</text>
+  <text x="135" y="226" font-size="12" fill="#444441" font-family="sans-serif">83%（15/18）</text>
+  <text x="55" y="250" font-size="12" fill="#888780" font-family="sans-serif">用时</text>
+  <text x="135" y="250" font-size="12" fill="#444441" font-family="sans-serif">6分23秒</text>
+  <text x="55" y="274" font-size="12" fill="#888780" font-family="sans-serif">状态</text>
+  <text x="135" y="274" font-size="12" fill="#3B6D11" font-family="sans-serif">正常完成</text>
+  <rect x="120" y="300" width="110" height="32" rx="8" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="175" y="320" text-anchor="middle" font-size="12" fill="#444441" font-family="sans-serif">关闭</text>
+  <rect x="345.5" y="0.5" width="319" height="349" rx="10" fill="#FFFFFF" stroke="#B4B2A9"/>
+  <path d="M355,1 H655 A9,9 0 0 1 664,10 V30 H346 V10 A9,9 0 0 1 355,1 Z" fill="#F1EFE8"/>
+  <text x="505" y="20" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">成绩详情</text>
+  <path d="M655,12 L661,18 M661,12 L655,18" stroke="#888780" stroke-width="1.2"/>
+  <text x="505" y="50" text-anchor="middle" font-size="11" font-weight="500" fill="#444441" font-family="sans-serif">得分 75 分 · 答对 15/20 · 正确率 83%</text>
+  <text x="505" y="68" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">作答 18 · 跳过 2 · 用时 6分23秒 · 中途退出</text>
+  <line x1="365" y1="80" x2="645" y2="80" stroke="#F1EFE8" stroke-width="1.5"/>
+  <text x="365" y="98" font-size="11" fill="#888780" font-family="sans-serif">题目</text>
+  <text x="480" y="98" font-size="11" fill="#888780" font-family="sans-serif">你的答案</text>
+  <text x="565" y="98" font-size="11" fill="#888780" font-family="sans-serif">正确答案</text>
+  <text x="365" y="122" font-size="12" fill="#26215C" font-family="sans-serif">47 + 35</text>
+  <text x="480" y="122" font-size="12" fill="#A32D2D" font-family="sans-serif">72</text>
+  <text x="565" y="122" font-size="12" font-weight="500" fill="#3B6D11" font-family="sans-serif">82</text>
+  <text x="365" y="146" font-size="12" fill="#26215C" font-family="sans-serif">62 - 28</text>
+  <text x="480" y="146" font-size="12" fill="#888780" font-family="sans-serif">跳过</text>
+  <text x="565" y="146" font-size="12" font-weight="500" fill="#3B6D11" font-family="sans-serif">34</text>
+  <text x="365" y="170" font-size="12" fill="#26215C" font-family="sans-serif">80 - 36</text>
+  <text x="480" y="170" font-size="12" fill="#A32D2D" font-family="sans-serif">54</text>
+  <text x="565" y="170" font-size="12" font-weight="500" fill="#3B6D11" font-family="sans-serif">44</text>
+  <text x="505" y="194" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">……</text>
+  <rect x="365" y="214" width="140" height="34" rx="8" fill="#EF9F27"/>
+  <text x="435" y="236" text-anchor="middle" font-size="12" font-weight="500" fill="#FFFFFF" font-family="sans-serif">重练本次错题</text>
+  <rect x="515" y="214" width="90" height="34" rx="8" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="560" y="236" text-anchor="middle" font-size="12" fill="#444441" font-family="sans-serif">关闭</text>
+  <text x="505" y="270" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">重练成绩不计入历史</text>
+  <text x="175" y="372" text-anchor="middle" font-size="13" fill="#B4B2A9" font-family="sans-serif">⑪ 历史详情-仅汇总（方案B）</text>
+  <text x="505" y="372" text-anchor="middle" font-size="13" fill="#B4B2A9" font-family="sans-serif">⑫ 历史详情-含错题+重练（方案A）</text>
+</svg>

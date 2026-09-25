@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 680 400" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>v1.2 界面设计：成绩页新增得分、历史成绩新增得分列与详情入口</title>
+  <desc>左：成绩页以大号"得分 X 分"为主标题，下方显示答对数与正确率；右：历史成绩表新增得分列、标记列和每行详情/删除按钮</desc>
+  <rect x="15.5" y="0.5" width="319" height="349" rx="10" fill="#FFFFFF" stroke="#B4B2A9"/>
+  <path d="M25,1 H325 A9,9 0 0 1 334,10 V30 H16 V10 A9,9 0 0 1 25,1 Z" fill="#F1EFE8"/>
+  <text x="175" y="20" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">成绩</text>
+  <path d="M325,12 L331,18 M331,12 L325,18" stroke="#888780" stroke-width="1.2"/>
+  <text x="175" y="62" text-anchor="middle" font-size="19" font-weight="500" fill="#26215C" font-family="sans-serif">做完啦！</text>
+  <path d="M0,-11 L3.2,-3.6 L11,-3.4 L5.2,1.6 L7,9 L0,4.7 L-7,9 L-5.2,1.6 L-11,-3.4 L-3.2,-3.6 Z" transform="translate(139,88) scale(0.85)" fill="#FAC775"/>
+  <path d="M0,-11 L3.2,-3.6 L11,-3.4 L5.2,1.6 L7,9 L0,4.7 L-7,9 L-5.2,1.6 L-11,-3.4 L-3.2,-3.6 Z" transform="translate(175,86) scale(1.05)" fill="#EF9F27"/>
+  <path d="M0,-11 L3.2,-3.6 L11,-3.4 L5.2,1.6 L7,9 L0,4.7 L-7,9 L-5.2,1.6 L-11,-3.4 L-3.2,-3.6 Z" transform="translate(211,88) scale(0.85)" fill="#FAC775"/>
+  <text x="175" y="114" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">太棒了！五星上将！</text>
+  <text x="175" y="152" text-anchor="middle" font-size="24" font-weight="500" fill="#26215C" font-family="sans-serif">得分 90 分</text>
+  <text x="175" y="178" text-anchor="middle" font-size="12" font-weight="500" fill="#3B6D11" font-family="sans-serif">答对 18 题 / 共 20 题</text>
+  <text x="175" y="200" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">正确率 100%（作答 18 · 跳过 2）</text>
+  <text x="175" y="220" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">用时 6分23秒</text>
+  <rect x="30" y="252" width="90" height="36" rx="8" fill="#378ADD"/>
+  <text x="75" y="275" text-anchor="middle" font-size="12" font-weight="500" fill="#FFFFFF" font-family="sans-serif">再来一轮</text>
+  <rect x="130" y="252" width="90" height="36" rx="8" fill="#EF9F27"/>
+  <text x="175" y="275" text-anchor="middle" font-size="12" font-weight="500" fill="#FFFFFF" font-family="sans-serif">看看错题</text>
+  <rect x="230" y="252" width="90" height="36" rx="8" fill="#FFFFFF" stroke="#B4B2A9"/>
+  <text x="275" y="275" text-anchor="middle" font-size="12" fill="#444441" font-family="sans-serif">返回菜单</text>
+  <rect x="345.5" y="0.5" width="319" height="349" rx="10" fill="#FFFFFF" stroke="#B4B2A9"/>
+  <path d="M355,1 H655 A9,9 0 0 1 664,10 V30 H346 V10 A9,9 0 0 1 355,1 Z" fill="#F1EFE8"/>
+  <text x="505" y="20" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">历史成绩（家长）</text>
+  <path d="M655,12 L661,18 M661,12 L655,18" stroke="#888780" stroke-width="1.2"/>
+  <text x="357" y="46" font-size="11" font-weight="500" fill="#444441" font-family="sans-serif">共 12 次 · 平均得分 82 分</text>
+  <rect x="600" y="34" width="52" height="20" rx="5" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="626" y="48" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">王二 ▾</text>
+  <text x="357" y="70" font-size="11" fill="#888780" font-family="sans-serif">时间</text>
+  <text x="430" y="70" font-size="11" fill="#888780" font-family="sans-serif">模式</text>
+  <text x="470" y="70" font-size="11" fill="#888780" font-family="sans-serif">得分</text>
+  <text x="505" y="70" font-size="11" fill="#888780" font-family="sans-serif">用时</text>
+  <text x="555" y="70" font-size="11" fill="#888780" font-family="sans-serif">标记</text>
+  <line x1="355" y1="78" x2="655" y2="78" stroke="#F1EFE8" stroke-width="1.5"/>
+  <rect x="355" y="82" width="300" height="20" fill="#F1EFE8"/>
+  <text x="357" y="96" font-size="11" fill="#444441" font-family="sans-serif">09-25 18:00</text>
+  <text x="430" y="96" font-size="11" fill="#378ADD" font-family="sans-serif">练习</text>
+  <text x="470" y="96" font-size="11" font-weight="500" fill="#3B6D11" font-family="sans-serif">90分</text>
+  <text x="505" y="96" font-size="11" fill="#444441" font-family="sans-serif">6分23秒</text>
+  <rect x="608" y="83" width="22" height="18" rx="4" fill="#FFFFFF" stroke="#378ADD"/>
+  <text x="619" y="96" text-anchor="middle" font-size="11" fill="#185FA5" font-family="sans-serif">详</text>
+  <rect x="634" y="83" width="22" height="18" rx="4" fill="#FFFFFF" stroke="#A32D2D"/>
+  <text x="645" y="96" text-anchor="middle" font-size="11" fill="#A32D2D" font-family="sans-serif">删</text>
+  <text x="357" y="122" font-size="11" fill="#444441" font-family="sans-serif">09-25 17:40</text>
+  <text x="430" y="122" font-size="11" fill="#378ADD" font-family="sans-serif">练习</text>
+  <text x="470" y="122" font-size="11" fill="#444441" font-family="sans-serif">50分</text>
+  <text x="505" y="122" font-size="11" fill="#444441" font-family="sans-serif">3分25秒</text>
+  <text x="555" y="122" font-size="11" fill="#A32D2D" font-family="sans-serif">中途退出</text>
+  <rect x="608" y="109" width="22" height="18" rx="4" fill="#FFFFFF" stroke="#378ADD"/>
+  <text x="619" y="122" text-anchor="middle" font-size="11" fill="#185FA5" font-family="sans-serif">详</text>
+  <rect x="634" y="109" width="22" height="18" rx="4" fill="#FFFFFF" stroke="#A32D2D"/>
+  <text x="645" y="122" text-anchor="middle" font-size="11" fill="#A32D2D" font-family="sans-serif">删</text>
+  <rect x="355" y="134" width="300" height="20" fill="#F1EFE8"/>
+  <text x="357" y="148" font-size="11" fill="#444441" font-family="sans-serif">09-24 20:15</text>
+  <text x="430" y="148" font-size="11" fill="#854F0B" font-family="sans-serif">测验</text>
+  <text x="470" y="148" font-size="11" fill="#444441" font-family="sans-serif">76分</text>
+  <text x="505" y="148" font-size="11" fill="#444441" font-family="sans-serif">20分00秒</text>
+  <text x="555" y="148" font-size="11" fill="#A32D2D" font-family="sans-serif">时间到</text>
+  <rect x="608" y="135" width="22" height="18" rx="4" fill="#FFFFFF" stroke="#378ADD"/>
+  <text x="619" y="148" text-anchor="middle" font-size="11" fill="#185FA5" font-family="sans-serif">详</text>
+  <rect x="634" y="135" width="22" height="18" rx="4" fill="#FFFFFF" stroke="#A32D2D"/>
+  <text x="645" y="148" text-anchor="middle" font-size="11" fill="#A32D2D" font-family="sans-serif">删</text>
+  <text x="505" y="290" text-anchor="middle" font-size="11" fill="#888780" font-family="sans-serif">点击【详】查看当次答题详情</text>
+  <rect x="357" y="306" width="90" height="28" rx="8" fill="#FFFFFF" stroke="#A32D2D"/>
+  <text x="402" y="324" text-anchor="middle" font-size="11" fill="#A32D2D" font-family="sans-serif">清空记录</text>
+  <rect x="562" y="306" width="90" height="28" rx="8" fill="#F1EFE8" stroke="#B4B2A9"/>
+  <text x="607" y="324" text-anchor="middle" font-size="11" fill="#444441" font-family="sans-serif">返回菜单</text>
+  <text x="175" y="372" text-anchor="middle" font-size="13" fill="#B4B2A9" font-family="sans-serif">⑨ 成绩页（新增得分）</text>
+  <text x="505" y="372" text-anchor="middle" font-size="13" fill="#B4B2A9" font-family="sans-serif">⑩ 历史成绩（得分 + 详情入口）</text>
+</svg>

@@ -63,8 +63,13 @@ ROLE_COLOR = {ROLE_PARENT: "#854F0B", ROLE_CHILD: "#185FA5"}
 USER_FILE = "口算小达人-用户.json"
 LEGACY_HISTORY = "口算小达人-历史成绩.txt"
 HISTORY_PREFIX = "口算小达人-历史成绩-"
+HISTORY_DETAIL_PREFIX = "口算小达人-历史明细-"
+DATA_VERSION = 2
 HISTORY_HEADER = ("口算小达人 历史成绩记录（每次答题一行）\n"
-                  "时间 | 模式 | 成绩 | 正确率 | 用时\n")
+                  "时间 | 模式 | 得分 | 答对 | 作答 | 跳过 | 未答 | 总题 | 正确率 | 用时\n")
+
+# 得分配色：>=90 绿、70-89 深黄、<70 红
+SCORE_GREEN, SCORE_AMBER, SCORE_RED = "#3B6D11", "#854F0B", "#A32D2D"
 
 
 # ---------------------------------------------------------------------------
@@ -158,20 +163,62 @@ def fmt_duration(sec):
     return "%d分%d秒" % (sec // 60, sec % 60)
 
 
-def compute_stars(acc):
-    if acc >= 0.9:
+def score_of(right, total):
+    """得分 = 答对 ÷ 总题数 × 100（满分 100）"""
+    return int(round(right / float(total) * 100)) if total else 0
+
+
+def acc_of(right, answered):
+    """正确率 = 答对 ÷ 已作答题数（不含跳过、不含未答）"""
+    return right / float(answered) if answered else 0.0
+
+
+def stars_of_score(score):
+    """星星按得分：>=90 三颗、70-89 两颗、<70 一颗"""
+    if score >= 90:
         return 3
-    if acc >= 0.7:
+    if score >= 70:
         return 2
     return 1
 
 
-def encouragement(acc):
-    if acc >= 0.9:
+def score_color(score):
+    if score >= 90:
+        return SCORE_GREEN
+    if score >= 70:
+        return SCORE_AMBER
+    return SCORE_RED
+
+
+def compute_stats(records, total):
+    """从答题记录统计：答对/作答/跳过/未答/得分/正确率"""
+    right = sum(1 for r in records if r["status"] == "right")
+    wrong = sum(1 for r in records if r["status"] == "wrong")
+    skipped = sum(1 for r in records if r["status"] == "skip")
+    unanswered = sum(1 for r in records if r["status"] == "unanswered")
+    answered = right + wrong
+    return {
+        "right": right, "wrong": wrong, "answered": answered,
+        "skipped": skipped, "unanswered": unanswered, "total": total,
+        "score": score_of(right, total), "acc": acc_of(right, answered),
+    }
+
+
+def encouragement(score):
+    if score >= 90:
         return "太棒了！五星上将！"
-    if acc >= 0.7:
+    if score >= 70:
         return "真不错，继续加油！"
     return "别灰心，再来一轮试试！"
+
+
+def question_from_text(text):
+    """把 "47 + 35" / "62-28" 还原为 Question 对象（历史错题重练用）"""
+    m = re.match(r"^(\d+)\s*([+\-])\s*(\d+)$", (text or "").strip())
+    if not m:
+        return None
+    q = Question(int(m.group(1)), int(m.group(3)), m.group(2))
+    return q
 
 
 def app_dir():
@@ -296,12 +343,14 @@ class UserStore:
 
     # ---- 读写 ----
     def load(self):
+        self.data_version = DATA_VERSION
         if os.path.exists(self.path):
             try:
                 with open(self.path, "r", encoding="utf-8") as fp:
                     data = json.load(fp)
                 self.users = [u for u in data.get("users", []) if u.get("name")]
                 self.current = data.get("current")
+                self.data_version = int(data.get("data_version", 1))
             except Exception:
                 self.users, self.current = [], None
         else:
@@ -319,11 +368,16 @@ class UserStore:
     def save(self):
         try:
             with open(self.path, "w", encoding="utf-8") as fp:
-                json.dump({"users": self.users, "current": self.current},
+                json.dump({"users": self.users, "current": self.current,
+                           "data_version": getattr(self, "data_version", DATA_VERSION)},
                           fp, ensure_ascii=False, indent=2)
             return True
         except Exception:
             return False
+
+    def set_data_version(self, version):
+        self.data_version = version
+        self.save()
 
     # ---- 查询 ----
     def has_users(self):
@@ -673,31 +727,129 @@ class ChangePinDialog(Modal):
 
 
 class QuitDialog(Modal):
-    """答题中途关闭：保存并退出 / 直接退出 / 继续答题"""
+    """答题中途关闭：两种退出都会记录成绩"""
 
     def __init__(self, parent, answered, right, can_save):
-        super().__init__(parent, "提示", 400, 370)
+        super().__init__(parent, "提示", 420, 380)
         tk.Label(self.body, text="本次答题还没结束", bg=PAGE_BG, fg=TITLE_DK,
                  font=(FONT, 15, "bold")).pack(pady=(4, 8))
         if can_save:
             tk.Label(self.body, text="已答 %d 题（对 %d 题）" % (answered, right),
                      bg=PAGE_BG, fg=TEXT_DK, font=(FONT, 13)).pack()
-            tk.Label(self.body, text="要保存这次的部分成绩吗？", bg=PAGE_BG,
+            tk.Label(self.body, text="两种退出都会记入历史，要看看成绩吗？", bg=PAGE_BG,
                      fg=TEXT_DK, font=(FONT, 13)).pack(pady=(4, 12))
-            make_button(self.body, "保存并退出", None, GREEN, WHITE, None,
-                        lambda: self.choose("save"), 240, 40, 14, 11).pack(pady=4)
+            make_button(self.body, "记录并看成绩", None, GREEN, WHITE, None,
+                        lambda: self.choose("save"), 250, 40, 14, 11).pack(pady=4)
+            make_button(self.body, "记录后直接退出", None, WHITE, TEXT_DK, None,
+                        lambda: self.choose("discard"), 250, 40, 14, 11,
+                        border=BORDER).pack(pady=4)
         else:
-            tk.Label(self.body, text="还没有作答，无法保存成绩", bg=PAGE_BG,
+            tk.Label(self.body, text="还没有作答，本次不会记录成绩", bg=PAGE_BG,
                      fg=TEXT_MUT, font=(FONT, 13)).pack(pady=(4, 12))
-        make_button(self.body, "直接退出", None, WHITE, TEXT_DK, None,
-                    lambda: self.choose("discard"), 240, 40, 14, 11,
-                    border=BORDER).pack(pady=4)
+            make_button(self.body, "退出", None, WHITE, TEXT_DK, None,
+                        lambda: self.choose("discard"), 250, 40, 14, 11,
+                        border=BORDER).pack(pady=4)
         make_button(self.body, "继续答题", None, BLUE, WHITE, None,
-                    lambda: self.choose("cancel"), 240, 40, 14, 11).pack(pady=4)
+                    lambda: self.choose("cancel"), 250, 40, 14, 11).pack(pady=4)
         if can_save:
-            tk.Label(self.body, text="保存后按已答题数计算正确率，历史中标记「中途退出」",
+            tk.Label(self.body, text="中途退出：得分按总题数计算，正确率按已作答计算，"
+                                     "历史中标记「中途退出」",
                      bg=PAGE_BG, fg=TEXT_MUT, font=(FONT, 11),
-                     wraplength=340).pack(pady=(10, 0))
+                     wraplength=360).pack(pady=(10, 0))
+
+    def choose(self, value):
+        self.result = value
+        self.close()
+
+
+class RecordDetailDialog(Modal):
+    """历史成绩详情：汇总统计 + 错题明细 + 重练本次错题"""
+
+    def __init__(self, parent, rec, detail):
+        super().__init__(parent, "成绩详情", 700, 580)
+        items = (detail or {}).get("items", [])
+        wrong_items = [it for it in items
+                       if it.get("s") in ("wrong", "skip", "unanswered")]
+
+        tk.Label(self.body, text="成绩详情", bg=PAGE_BG, fg=TITLE_DK,
+                 font=(FONT, 17, "bold")).pack(pady=(0, 6))
+        tk.Label(self.body, text="%s　·　%s" % (rec["time"], rec["mode"]),
+                 bg=PAGE_BG, fg=TEXT_MUT, font=(FONT, 11)).pack()
+        tk.Label(self.body, text="得分 %d 分　·　答对 %d / 总题 %d　·　正确率 %d%%（作答 %d）"
+                 % (rec["score"], rec["right"], rec["total"], rec["acc"], rec["answered"]),
+                 bg=PAGE_BG, fg=score_color(rec["score"]),
+                 font=(FONT, 14, "bold")).pack(pady=(8, 2))
+        line2 = "跳过 %d · 未答 %d · 用时 %s" % (rec["skipped"], rec["unanswered"], rec["dur"])
+        if rec["flag"]:
+            line2 += " · " + rec["flag"]
+        tk.Label(self.body, text=line2, bg=PAGE_BG, fg=TEXT_DK,
+                 font=(FONT, 11)).pack(pady=(0, 8))
+
+        if wrong_items:
+            tk.Label(self.body, text="本次错题与跳过（共 %d 道）" % len(wrong_items),
+                     bg=PAGE_BG, fg=TEXT_DK, font=(FONT, 12, "bold")).pack(anchor="w",
+                                                                          padx=10, pady=(2, 4))
+            wrap = tk.Frame(self.body, bg=PAGE_BG)
+            wrap.pack(fill="both", expand=True, padx=10)
+            canvas = tk.Canvas(wrap, bg=PAGE_BG, highlightthickness=0, height=250)
+            sb = tk.Scrollbar(wrap, orient="vertical", command=canvas.yview)
+            inner = tk.Frame(canvas, bg=PAGE_BG)
+            win = canvas.create_window((0, 0), window=inner, anchor="nw")
+            canvas.configure(yscrollcommand=sb.set)
+            canvas.pack(side="left", fill="both", expand=True)
+            sb.pack(side="right", fill="y")
+            inner.bind("<Configure>",
+                       lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+            canvas.bind("<Configure>",
+                        lambda e: canvas.itemconfigure(win, width=e.width))
+
+            head = tk.Frame(inner, bg=CARD_BG)
+            head.pack(fill="x", pady=(0, 2))
+            for label, col, w in (("题目", 0, 240), ("你的答案", 1, 140), ("正确答案", 2, 140)):
+                lbl = tk.Label(head, text=label, bg=CARD_BG, fg=TEXT_MUT, font=(FONT, 12),
+                               anchor="w", padx=8, pady=6)
+                lbl.grid(row=0, column=col, sticky="w")
+                head.grid_columnconfigure(col, minsize=w)
+                lbl.bind("<MouseWheel>", lambda e, c=canvas: c.yview_scroll(
+                    int(-e.delta / 120), "units"))
+
+            labels = {"right": "答对", "wrong": "答错", "skip": "跳过", "unanswered": "未答"}
+            for i, it in enumerate(wrong_items):
+                bg = CARD_BG if i % 2 == 0 else WHITE
+                row = tk.Frame(inner, bg=bg)
+                row.pack(fill="x", pady=1)
+                cells = [
+                    (it.get("q", ""), 0, 240, TITLE_DK, 14, True),
+                    (("跳过" if it.get("s") == "skip" else
+                      ("未答" if it.get("s") == "unanswered" else str(it.get("a", "")))),
+                     1, 140, RED if it.get("s") == "wrong" else TEXT_MUT, 14,
+                     it.get("s") == "wrong"),
+                    (str(it.get("c", "")), 2, 140, SCORE_GREEN, 14, True),
+                ]
+                for text, col, w, fg, size, bold in cells:
+                    lbl = tk.Label(row, text=text, bg=bg, fg=fg,
+                                   font=(FONT, size, "bold" if bold else "normal"),
+                                   anchor="w", padx=8, pady=6)
+                    lbl.grid(row=0, column=col, sticky="w")
+                    row.grid_columnconfigure(col, minsize=w)
+                    lbl.bind("<MouseWheel>", lambda e, c=canvas: c.yview_scroll(
+                        int(-e.delta / 120), "units"))
+        else:
+            tk.Label(self.body, text="本次全部答对，没有错题！", bg=PAGE_BG, fg=SCORE_GREEN,
+                     font=(FONT, 14, "bold")).pack(pady=30)
+
+        btns = tk.Frame(self.body, bg=PAGE_BG)
+        btns.pack(pady=(10, 0))
+        if wrong_items:
+            make_button(btns, "重练本次错题", None, ORANGE, WHITE, None,
+                        lambda: self.choose(("review", wrong_items)),
+                        170, 44, 14, 11).pack(side="left", padx=8)
+        make_button(btns, "关闭", None, CARD_BG, TEXT_DK, None,
+                    lambda: self.choose(("close", None)), 120, 44, 14, 11,
+                    border=BORDER).pack(side="left", padx=8)
+        if wrong_items:
+            tk.Label(self.body, text="重练成绩不计入历史", bg=PAGE_BG, fg=TEXT_MUT,
+                     font=(FONT, 11)).pack(pady=(8, 0))
 
     def choose(self, value):
         self.result = value
@@ -744,10 +896,32 @@ class App:
         for seq in ("<Return>", "<KP_Enter>"):
             root.bind_all(seq, self._on_enter_key)
 
+        self._migrate_data_if_needed()
+
         if self.store.has_users():
             self.show_menu()
         else:
             self.show_wizard()
+
+    def _migrate_data_if_needed(self):
+        """v1.1 → v1.2：历史格式升级，按用户确认清空旧记录"""
+        if getattr(self.store, "data_version", DATA_VERSION) >= DATA_VERSION:
+            return
+        self.wipe_all_history()
+        self.store.set_data_version(DATA_VERSION)
+
+    def wipe_all_history(self):
+        """清空所有用户的历史记录与明细"""
+        for name in self.store.names():          # 注意：这里是用户名，不是用户字典
+            try:
+                with open(self.history_path(name), "w", encoding="utf-8") as fp:
+                    fp.write(HISTORY_HEADER)
+            except Exception:
+                pass
+            try:
+                os.remove(self.detail_path(name))
+            except Exception:
+                pass
 
     # ---------------- 通用 ----------------
     def _center_window(self):
@@ -1158,16 +1332,17 @@ class App:
         if self.screen == "quiz" and self.round and not self.round.finished:
             self.submit_answer()
 
-    def _build_result_data(self, rs, total_override=None, partial=False):
-        total = total_override if total_override else len(rs.questions)
-        right = sum(1 for r in rs.records if r["status"] == "right")
-        acc = right / float(total) if total else 0.0
-        wrong = [r for r in rs.records if r["status"] != "right"]
-        return {
-            "mode": rs.mode, "right": right, "total": total, "acc": acc,
-            "elapsed": rs.elapsed, "timed_out": rs.timed_out,
-            "wrong": wrong, "stars": compute_stars(acc), "partial": partial,
-        }
+    def _build_result_data(self, rs, partial=False):
+        """汇总本轮结果：得分/正确率口径见 compute_stats"""
+        st = compute_stats(rs.records, len(rs.questions))
+        st.update({
+            "mode": rs.mode, "elapsed": rs.elapsed, "timed_out": rs.timed_out,
+            "partial": partial, "stars": stars_of_score(st["score"]),
+            "records": list(rs.records),
+            "wrong": [r for r in rs.records
+                      if r["status"] in ("wrong", "skip", "unanswered")],
+        })
+        return st
 
     def finish_round(self, timed_out=False):
         rs = self.round
@@ -1180,39 +1355,43 @@ class App:
         else:
             rs.elapsed = max(0.0, time.time() - (rs.start_ts or time.time()))
         total = len(rs.questions)
+        # 时间到未作答的题：记为「未答」（不计入正确率分母）
         while len(rs.records) < total:
             rs.records.append({"q": rs.questions[len(rs.records)], "ans": None,
-                               "status": "skip"})
+                               "status": "unanswered"})
         self.result_data = self._build_result_data(rs)
         if rs.mode in (MODE_PRACTICE, MODE_TEST):
             self.save_history(self.current_user(), self.result_data)
         self._show_result()
 
     def _ask_quit_round(self):
-        """答题中途关闭：保存并退出 / 直接退出 / 继续答题"""
+        """答题中途关闭：两种退出都会记录成绩（已答 0 题除外）"""
         rs = self.round
-        answered = len(rs.records)
+        answered = sum(1 for r in rs.records if r["status"] in ("right", "wrong"))
         right = sum(1 for r in rs.records if r["status"] == "right")
         choice = QuitDialog(self.root, answered, right, answered >= 1).show()
         if choice == "save":
-            self.save_partial_and_exit()
+            self.save_partial_and_exit(show_result=True)
         elif choice == "discard":
-            self.round = None
-            self.show_menu()
+            self.save_partial_and_exit(show_result=False)
 
-    def save_partial_and_exit(self):
-        """中断保存：只保存已答部分，正确率按已答题数计算"""
+    def save_partial_and_exit(self, show_result=True):
+        """中断退出：记录已答部分（得分按总题数、正确率按已作答），标记「中途退出」"""
         rs = self.round
         if not rs or not rs.records:
+            self.round = None
             self.show_menu()
             return
         rs.finished = True
         rs.elapsed = max(0.0, time.time() - (rs.start_ts or time.time()))
-        self.result_data = self._build_result_data(rs, total_override=len(rs.records),
-                                                   partial=True)
+        self.result_data = self._build_result_data(rs, partial=True)
         if rs.mode in (MODE_PRACTICE, MODE_TEST):
             self.save_history(self.current_user(), self.result_data)
-        self._show_result()
+        if show_result:
+            self._show_result()
+        else:
+            self.round = None
+            self.show_menu()
 
     # ---------------- 成绩界面 ----------------
     def _build_result(self):
@@ -1238,13 +1417,18 @@ class App:
     def _show_result(self):
         d = self.result_data
         self.res_stars.config(text="★" * d["stars"] + "☆" * (3 - d["stars"]) +
-                                   "  " + encouragement(d["acc"]))
-        self.res_score.config(text="%d / %d" % (d["right"], d["total"]))
-        self.res_right.config(text="答对 %d 题" % d["right"])
-        self.res_detail.config(text="正确率 %d%%　·　用时 %s"
-                                    % (round(d["acc"] * 100), fmt_duration(d["elapsed"])))
+                                   "  " + encouragement(d["score"]))
+        self.res_score.config(text="得分 %d 分" % d["score"],
+                              fg=score_color(d["score"]))
+        self.res_right.config(text="答对 %d 题 / 共 %d 题" % (d["right"], d["total"]))
+        extra = "作答 %d · 跳过 %d" % (d["answered"], d["skipped"])
+        if d["unanswered"]:
+            extra += " · 未答 %d" % d["unanswered"]
+        self.res_detail.config(text="正确率 %d%%（%s）　·　用时 %s"
+                                    % (round(d["acc"] * 100), extra,
+                                       fmt_duration(d["elapsed"])))
         if d.get("partial"):
-            self.res_note.config(text="中途退出，按已答 %d 题计算" % d["total"])
+            self.res_note.config(text="中途退出：得分按总题数 %d 计算" % d["total"])
         elif d["mode"] == MODE_TEST:
             self.res_note.config(text=("时间到，已自动交卷" if d["timed_out"] else "在限定时间内完成"))
         else:
@@ -1331,6 +1515,8 @@ class App:
                            0, 360, TITLE_DK, 14, bg=bg)
                 if r["status"] == "skip":
                     self._cell(line, "跳过", 1, 150, TEXT_MUT, 13, bg=bg)
+                elif r["status"] == "unanswered":
+                    self._cell(line, "未答", 1, 150, TEXT_MUT, 13, bg=bg)
                 else:
                     self._cell(line, "%s" % r["ans"], 1, 150, RED, 14, bold=True, bg=bg)
                 self._cell(line, "%d" % q.answer, 2, 150, GREEN, 14, bold=True, bg=bg)
@@ -1368,54 +1554,94 @@ class App:
     def history_path(self, user):
         return os.path.join(self.base_dir, HISTORY_PREFIX + safe_filename(user) + ".txt")
 
+    def detail_path(self, user):
+        return os.path.join(self.base_dir, HISTORY_DETAIL_PREFIX + safe_filename(user) + ".jsonl")
+
     def save_history(self, user, data):
-        """追加一条成绩；中途退出 / 时间到会追加标记"""
+        """追加一条成绩到 txt，同时写一条明细到 jsonl（供历史详情与重练）"""
         ts = time.strftime("%Y-%m-%d %H:%M:%S")
-        line = "%s | %s | 答对 %d/%d | 正确率 %d%% | 用时 %s" % (
-            ts, MODE_NAME[data["mode"]], data["right"], data["total"],
-            round(data["acc"] * 100), fmt_duration(data["elapsed"]))
+        flag = ""
         if data.get("partial"):
-            line += " | 中途退出"
+            flag = "中途退出"
         elif data.get("timed_out"):
-            line += " | 时间到"
-        path = self.history_path(user)
+            flag = "时间到"
+        line = ("%s | %s | 得分 %d | 答对 %d | 作答 %d | 跳过 %d | 未答 %d | 总题 %d "
+                "| 正确率 %d%% | 用时 %s" % (
+                    ts, MODE_NAME[data["mode"]], data["score"], data["right"],
+                    data["answered"], data["skipped"], data["unanswered"],
+                    data["total"], round(data["acc"] * 100),
+                    fmt_duration(data["elapsed"])))
+        if flag:
+            line += " | " + flag
         try:
+            path = self.history_path(user)
             new_file = (not os.path.exists(path)) or os.path.getsize(path) == 0
             with open(path, "a", encoding="utf-8") as fp:
                 if new_file:
                     fp.write(HISTORY_HEADER)
                 fp.write(line + "\n")
+            detail = {
+                "time": ts, "mode": data["mode"], "total": data["total"],
+                "right": data["right"], "answered": data["answered"],
+                "skipped": data["skipped"], "unanswered": data["unanswered"],
+                "score": data["score"], "acc": round(data["acc"] * 100),
+                "elapsed": int(data["elapsed"]), "flag": flag,
+                "items": [{"q": r["q"].text, "a": r["ans"], "c": r["q"].answer,
+                           "s": r["status"]} for r in data.get("records", [])],
+            }
+            with open(self.detail_path(user), "a", encoding="utf-8") as fp:
+                fp.write(json.dumps(detail, ensure_ascii=False) + "\n")
             return True
         except Exception:
             return False
 
     def read_history(self, user):
-        """读取某用户历史（最新在前），带物理行号便于删除"""
+        """读取某用户历史（最新在前）；带物理行号 line_no 与明细序号 data_idx"""
         pat = re.compile(
-            r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| (\S+) \| 答对 (\d+)/(\d+) "
-            r"\| 正确率 (\d+)% \| 用时 (.+?)( \| (时间到|中途退出))?$")
+            r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| (\S+) \| 得分 (\d+) \| 答对 (\d+) "
+            r"\| 作答 (\d+) \| 跳过 (\d+) \| 未答 (\d+) \| 总题 (\d+) \| 正确率 (\d+)% "
+            r"\| 用时 (.+?)( \| (时间到|中途退出))?$")
         out = []
+        data_idx = 0
         try:
             with open(self.history_path(user), "r", encoding="utf-8") as fp:
                 for idx, raw in enumerate(fp):
                     m = pat.match(raw.strip())
                     if m:
                         out.append({
-                            "line_no": idx, "time": m.group(1), "mode": m.group(2),
-                            "right": int(m.group(3)), "total": int(m.group(4)),
-                            "acc": int(m.group(5)), "dur": m.group(6),
-                            "flag": m.group(8) or "",
+                            "line_no": idx, "data_idx": data_idx,
+                            "time": m.group(1), "mode": m.group(2),
+                            "score": int(m.group(3)), "right": int(m.group(4)),
+                            "answered": int(m.group(5)), "skipped": int(m.group(6)),
+                            "unanswered": int(m.group(7)), "total": int(m.group(8)),
+                            "acc": int(m.group(9)), "dur": m.group(10),
+                            "flag": m.group(12) or "",
                         })
+                        data_idx += 1
         except Exception:
             pass
         out.reverse()
         return out
 
-    def delete_history_record(self, user, line_no):
-        """删除一条记录（仅家长）"""
+    def read_detail(self, user, data_idx):
+        """读取某条历史记录对应的明细（错题列表等）"""
+        if data_idx is None:
+            return None
+        try:
+            with open(self.detail_path(user), "r", encoding="utf-8") as fp:
+                lines = fp.readlines()
+            if 0 <= data_idx < len(lines):
+                return json.loads(lines[data_idx])
+        except Exception:
+            pass
+        return None
+
+    def delete_history_record(self, user, rec):
+        """删除一条记录（仅家长）；同时删除对应明细"""
         if not self.can_delete_records():
             return False
         try:
+            line_no = rec["line_no"] if isinstance(rec, dict) else int(rec)
             path = self.history_path(user)
             with open(path, "r", encoding="utf-8") as fp:
                 lines = fp.readlines()
@@ -1424,17 +1650,37 @@ class App:
             del lines[line_no]
             with open(path, "w", encoding="utf-8") as fp:
                 fp.writelines(lines)
+            if isinstance(rec, dict):
+                self._delete_detail_line(user, rec.get("data_idx"))
             return True
         except Exception:
             return False
 
+    def _delete_detail_line(self, user, data_idx):
+        if data_idx is None:
+            return
+        try:
+            path = self.detail_path(user)
+            with open(path, "r", encoding="utf-8") as fp:
+                lines = fp.readlines()
+            if 0 <= data_idx < len(lines):
+                del lines[data_idx]
+                with open(path, "w", encoding="utf-8") as fp:
+                    fp.writelines(lines)
+        except Exception:
+            pass
+
     def clear_history(self, user):
-        """清空某用户历史（仅家长）"""
+        """清空某用户历史与明细（仅家长）"""
         if not self.can_delete_records():
             return False
         try:
             with open(self.history_path(user), "w", encoding="utf-8") as fp:
                 fp.write(HISTORY_HEADER)
+            try:
+                os.remove(self.detail_path(user))
+            except Exception:
+                pass
             return True
         except Exception:
             return False
@@ -1450,7 +1696,7 @@ class App:
         self.hist_view_btn_holder.pack()
 
         table = tk.Frame(f, bg=PAGE_BG)
-        table.pack(fill="both", expand=True, padx=60, pady=(8, 0))
+        table.pack(fill="both", expand=True, padx=36, pady=(8, 0))
         self.hist_canvas = tk.Canvas(table, bg=PAGE_BG, highlightthickness=0)
         sb = tk.Scrollbar(table, orient="vertical", command=self.hist_canvas.yview)
         self.hist_inner = tk.Frame(self.hist_canvas, bg=PAGE_BG)
@@ -1495,14 +1741,15 @@ class App:
 
         if recs:
             self.hist_sb.pack(side="right", fill="y")
-            avg = round(sum(r["acc"] for r in recs) / float(len(recs)))
-            self.hist_sum.config(text="共练习 %d 次 · 平均正确率 %d%%（显示最近 %d 次）"
+            avg = round(sum(r["score"] for r in recs) / float(len(recs)))
+            self.hist_sum.config(text="共练习 %d 次 · 平均得分 %d 分（显示最近 %d 次）"
                                       % (len(recs), avg, self.history_rows_count))
             head = tk.Frame(self.hist_inner, bg=CARD_BG)
             head.pack(fill="x", pady=(0, 2))
-            cols = [("时间", 0, 210), ("模式", 1, 110), ("成绩", 2, 120), ("用时", 3, 150)]
+            cols = [("时间", 0, 190), ("模式", 1, 90), ("得分", 2, 80),
+                    ("正确率", 3, 90), ("用时", 4, 130), ("标记", 5, 100)]
             if parent:
-                cols.append(("操作", 4, 70))
+                cols.append(("操作", 6, 70))
             for label, col, w in cols:
                 self._cell3(head, label, col, w, TEXT_MUT, 12, bold=False, bg=CARD_BG)
 
@@ -1510,22 +1757,26 @@ class App:
                 bg = CARD_BG if i % 2 == 0 else WHITE
                 line = tk.Frame(self.hist_inner, bg=bg)
                 line.pack(fill="x", pady=1)
-                self._cell3(line, r["time"], 0, 210, TEXT_DK, 13, bg=bg)
-                self._cell3(line, r["mode"], 1, 110,
+                self._cell3(line, r["time"], 0, 190, TEXT_DK, 13, bg=bg)
+                self._cell3(line, r["mode"], 1, 90,
                             BLUE if r["mode"] == "练习模式" else ORANGE, 13, bg=bg)
-                self._cell3(line, "%d/%d" % (r["right"], r["total"]), 2, 120,
-                            GREEN if r["acc"] >= 90 else TEXT_DK, 13, bg=bg)
-                dur = r["dur"] + ("（%s）" % r["flag"] if r["flag"] else "")
-                self._cell3(line, dur, 3, 150, TEXT_DK, 13, bg=bg)
+                self._cell3(line, "%d分" % r["score"], 2, 80,
+                            score_color(r["score"]), 13, bg=bg)
+                self._cell3(line, "%d%%" % r["acc"], 3, 90, TEXT_DK, 13, bg=bg)
+                self._cell3(line, r["dur"], 4, 130, TEXT_DK, 13, bg=bg)
+                self._cell3(line, r["flag"], 5, 100,
+                            RED if r["flag"] else TEXT_MUT, 12, bg=bg)
+                holder = tk.Frame(line, bg=bg, width=70, height=30)
+                holder.grid(row=0, column=6, sticky="w")
+                holder.grid_propagate(False)
+                make_button(holder, "详", None, WHITE, "#185FA5", None,
+                            lambda u=user, rr=r: self.show_record_detail(u, rr),
+                            30, 24, 11, 11, border=BLUE).pack(side="left", padx=(0, 2))
                 if parent:
-                    holder = tk.Frame(line, bg=bg, width=70, height=30)
-                    holder.grid(row=0, column=4, sticky="w")
-                    holder.grid_propagate(False)
                     make_button(holder, "删", None, WHITE, RED, None,
-                                lambda u=user, n=r["line_no"]: self._delete_record(u, n),
-                                40, 24, 11, 11, border=RED).pack(pady=3)
-            self.hist_footer.config(text="共 %d 条记录 · 记录文件：%s"
-                                        % (len(recs), os.path.basename(self.history_path(user))))
+                                lambda u=user, rr=r: self._delete_record(u, rr),
+                                30, 24, 11, 11, border=RED).pack(side="left")
+            self.hist_footer.config(text="共 %d 条记录 · 点击【详】查看当次答题详情" % len(recs))
         else:
             self.hist_sb.pack_forget()
             self.hist_sum.config(text="还没有记录，快去练习吧！")
@@ -1545,18 +1796,38 @@ class App:
             w.bind("<MouseWheel>", self._on_mousewheel_hist)
         self._show("history")
 
+    def show_record_detail(self, user, rec):
+        """历史记录详情（孩子也可查看自己的记录）"""
+        detail = self.read_detail(user, rec.get("data_idx"))
+        res = RecordDetailDialog(self.root, rec, detail).show()
+        if res and res[0] == "review":
+            self.start_review_items(res[1])
+
+    def start_review_items(self, items):
+        """用某次记录的错题重新组卷（不计入历史）"""
+        qs = []
+        for it in items:
+            q = question_from_text(it.get("q", ""))
+            if q:
+                qs.append(q)
+        if not qs:
+            messagebox.showinfo(APP_TITLE, "这次没有可重练的题目")
+            return
+        random.shuffle(qs)
+        self._begin_round(qs, MODE_REVIEW, None)
+
     def _pick_view_user(self):
         name = PickUserDialog(self.root, self.store, "选择查看对象",
                               current=self.hist_view_user).show()
         if name:
             self.show_history(name)
 
-    def _delete_record(self, user, line_no):
+    def _delete_record(self, user, rec):
         if not self.can_delete_records():
             messagebox.showinfo(APP_TITLE, "只有家长可以删除历史记录")
             return
         if messagebox.askyesno(APP_TITLE, "确定删除这条成绩记录吗？"):
-            if self.delete_history_record(user, line_no):
+            if self.delete_history_record(user, rec):
                 self.show_history(user)
 
     def _clear_records(self, user):
@@ -1736,7 +2007,7 @@ def run_selftest():
                             ("  -> " + str(detail)) if detail and not ok else ""))
 
     out("=" * 66)
-    out("口算小达人 v1.1 自检")
+    out("口算小达人 v1.2 自检")
     out("=" * 66)
 
     # ---- 1. 出题引擎 ----
@@ -1799,6 +2070,42 @@ def run_selftest():
     check("练习成绩记入当前用户（王二 1 条 / 王一 0 条）",
           len(app.read_history("王二")) == 1 and len(app.read_history("王一")) == 0)
 
+    # 含跳过与错题的完整轮次：对 15、错 3、跳 2
+    app.start_practice()
+    for i in range(20):
+        if i < 2:
+            app.skip_question()
+            continue
+        q = app.round.questions[app.round.index]
+        app.entry.delete(0, "end")
+        app.entry.insert(0, str(q.answer if i < 17 else q.answer + 1))
+        app.submit_answer()
+    d = app.result_data
+    check("含跳过：得分=答对/总题（15/20→75分）、正确率=答对/作答（15/18→83%）",
+          d["right"] == 15 and d["answered"] == 18 and d["skipped"] == 2
+          and d["score"] == 75 and round(d["acc"] * 100) == 83,
+          (d["right"], d["answered"], d["skipped"], d["score"], round(d["acc"] * 100)))
+    check("星星按得分评定（75 分→2 颗星）", d["stars"] == 2, d["stars"])
+
+    # 历史明细与"重练本次错题"
+    rec0 = app.read_history("王二")[0]
+    detail0 = app.read_detail("王二", rec0["data_idx"])
+    check("历史明细与记录一致（得分/逐题明细/跳过数）",
+          detail0 and detail0["score"] == 75 and len(detail0["items"]) == 20
+          and sum(1 for it in detail0["items"] if it["s"] == "skip") == 2,
+          detail0 and (detail0.get("score"), len(detail0.get("items", []))))
+    wrong_items = [it for it in detail0["items"] if it["s"] in ("wrong", "skip")]
+    app.start_review_items(wrong_items)
+    check("详情→重练本次错题：错题+跳过共 5 道组卷",
+          len(app.round.questions) == 5, len(app.round.questions))
+    before_cnt = len(app.read_history("王二"))
+    for _ in range(5):
+        q = app.round.questions[app.round.index]
+        app.entry.delete(0, "end")
+        app.entry.insert(0, str(q.answer))
+        app.submit_answer()
+    check("历史错题重练不计入历史", len(app.read_history("王二")) == before_cnt)
+
     app.switch_user("王一")
     app.start_practice()
     for _ in range(20):
@@ -1807,7 +2114,7 @@ def run_selftest():
         app.entry.insert(0, str(q.answer))
         app.submit_answer()
     check("不同用户历史互相隔离",
-          len(app.read_history("王一")) == 1 and len(app.read_history("王二")) == 1)
+          len(app.read_history("王一")) == 1 and len(app.read_history("王二")) == 2)
 
     # 权限界面差异
     app.switch_user("王二")
@@ -1832,14 +2139,17 @@ def run_selftest():
             app.entry.insert(0, str(q.answer))
             app.submit_answer()
     recs = app.read_history("王二")
-    check("王二累计 3 条记录", len(recs) == 3, len(recs))
+    check("王二累计 4 条记录", len(recs) == 4, len(recs))
     app.switch_user("王一")
-    app.delete_history_record("王二", recs[0]["line_no"])
-    check("家长删除单条后文件同步减少一行", len(app.read_history("王二")) == 2)
+    app.delete_history_record("王二", recs[0])
+    check("家长删除单条后 txt 与明细同步减少",
+          len(app.read_history("王二")) == 3
+          and len(open(app.detail_path("王二"), encoding="utf-8").readlines()) == 3)
     check("家长清空记录后仅剩表头", app.clear_history("王二")
-          and len(app.read_history("王二")) == 0)
+          and len(app.read_history("王二")) == 0
+          and not os.path.exists(app.detail_path("王二")))
 
-    # 中断保存
+    # 中断退出（两种退出都记录）
     app.switch_user("王二")
     app.start_practice()
     for i in range(3):
@@ -1847,13 +2157,55 @@ def run_selftest():
         app.entry.delete(0, "end")
         app.entry.insert(0, str(q.answer if i < 2 else q.answer + 1))
         app.submit_answer()
-    app.save_partial_and_exit()
+    app.save_partial_and_exit(show_result=True)
     d = app.result_data
-    check("中断保存：按已答题数计（3 题对 2 题 → 67%）",
-          d["partial"] and d["total"] == 3 and d["right"] == 2
-          and round(d["acc"] * 100) == 67, (d["total"], d["right"], d["acc"]))
+    check("中途退出：得分按总题数（2/20→10分）、正确率按已作答（2/3→67%）",
+          d["partial"] and d["total"] == 20 and d["right"] == 2 and d["answered"] == 3
+          and d["score"] == 10 and round(d["acc"] * 100) == 67,
+          (d["total"], d["right"], d["answered"], d["score"], round(d["acc"] * 100)))
     last = open(app.history_path("王二"), encoding="utf-8").read().strip().split("\n")[-1]
-    check("历史记录标记「中途退出」且记 2/3", "中途退出" in last and "2/3" in last, last)
+    check("历史记录带「中途退出」标记且含得分/作答字段",
+          "中途退出" in last and "得分 10" in last and "作答 3" in last, last)
+    check("成绩页显示中途退出说明",
+          "中途退出" in app.res_note.cget("text"), app.res_note.cget("text"))
+
+    cnt = len(app.read_history("王二"))
+    app.start_practice()
+    for _ in range(2):
+        q = app.round.questions[app.round.index]
+        app.entry.delete(0, "end")
+        app.entry.insert(0, str(q.answer))
+        app.submit_answer()
+    app.save_partial_and_exit(show_result=False)
+    check("另一种退出方式（不看成绩）同样记入历史",
+          len(app.read_history("王二")) == cnt + 1 and app.screen == "menu",
+          (len(app.read_history("王二")), app.screen))
+
+    # 时间到：跳过与未答分开统计
+    app.start_test()
+    for i in range(11):
+        if i == 10:
+            app.skip_question()
+            continue
+        q = app.round.questions[app.round.index]
+        app.entry.delete(0, "end")
+        app.entry.insert(0, str(q.answer if i < 8 else q.answer + 1))
+        app.submit_answer()
+    app.round.start_ts = time.time() - (TEST_TIME_LIMIT + 5)
+    app.tick_timer()
+    app.finish_round(timed_out=True)
+    d = app.result_data
+    check("时间到：未答计入「未答」且不进入正确率分母（对8/作答10→80%，得分8分）",
+          d["unanswered"] == 89 and d["skipped"] == 1 and d["answered"] == 10
+          and d["right"] == 8 and d["score"] == 8 and round(d["acc"] * 100) == 80,
+          (d["right"], d["answered"], d["skipped"], d["unanswered"], d["score"]))
+    check("星星与得分配档：90分→3星、75分→2星、50分→1星",
+          stars_of_score(90) == 3 and stars_of_score(75) == 2 and stars_of_score(50) == 1)
+    check("得分配色分档（≥90绿 / 70-89黄 / <70红）",
+          score_color(95) == SCORE_GREEN and score_color(75) == SCORE_AMBER
+          and score_color(40) == SCORE_RED)
+    check("时间到记录在历史中带「时间到」标记",
+          any(r["flag"] == "时间到" for r in app.read_history("王二")))
 
     # 用户管理
     ok, msg = st.add_user("王三", ROLE_CHILD)
@@ -1872,7 +2224,7 @@ def run_selftest():
           st.set_pin("王一", "5678")[0] and not st.verify("王一", "1234")
           and st.verify("王一", "5678"))
 
-    # 旧数据迁移
+    # 旧数据迁移：v1.0 单文件历史 / v1.1 旧格式历史
     tmp2 = tempfile.mkdtemp(prefix="ksx_legacy_")
     legacy = os.path.join(tmp2, LEGACY_HISTORY)
     with open(legacy, "w", encoding="utf-8") as fp:
@@ -1880,6 +2232,23 @@ def run_selftest():
     app2 = App(root, selftest=True, base_dir=tmp2)
     check("v1.1 首次启动清空 v1.0 旧历史文件并进入向导",
           (not os.path.exists(legacy)) and app2.screen == "wizard")
+
+    tmp3 = tempfile.mkdtemp(prefix="ksx_v11_")
+    with open(os.path.join(tmp3, USER_FILE), "w", encoding="utf-8") as fp:
+        json.dump({"users": [{"name": "王一", "role": "parent", "salt": "s", "pw": "p"},
+                             {"name": "王二", "role": "child", "salt": None, "pw": None}],
+                   "current": "王二"}, fp, ensure_ascii=False)
+    old_hist = os.path.join(tmp3, HISTORY_PREFIX + "王二.txt")
+    with open(old_hist, "w", encoding="utf-8") as fp:
+        fp.write("口算小达人 历史成绩记录（每次答题一行）\n"
+                 "时间 | 模式 | 成绩 | 正确率 | 用时\n"
+                 "2026-09-24 20:00:00 | 练习模式 | 答对 18/20 | 正确率 90% | 用时 6分23秒\n")
+    app3 = App(root, selftest=True, base_dir=tmp3)
+    content = open(old_hist, encoding="utf-8").read()
+    check("v1.2 首次启动清空 v1.1 旧格式历史并记录数据版本",
+          ("18/20" not in content) and ("得分" in content)
+          and app3.store.data_version == DATA_VERSION
+          and len(app3.read_history("王二")) == 0)
 
     root.destroy()
 
